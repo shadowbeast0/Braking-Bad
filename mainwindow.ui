@@ -3,98 +3,24 @@
  <class>MainWindow</class>
  <widget class="QMainWindow" name="MainWindow">
   <property name="windowTitle">
-   <string>Grid Runner</string>
+   <string>Driver</string>
   </property>
   <widget class="QWidget" name="centralwidget">
-   <layout class="QHBoxLayout" name="horizontalLayout" stretch="4,1">
+   <layout class="QVBoxLayout" name="verticalLayout">
     <item>
-     <widget class="my_label" name="frame">
-      <property name="minimumSize">
-       <size><width>720</width><height>480</height></size>
+     <widget class="QWidget" name="canvas" native="true">
+      <property name="sizePolicy">
+       <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+        <horstretch>0</horstretch>
+        <verstretch>0</verstretch>
+       </sizepolicy>
       </property>
-      <property name="frameShape"><enum>QFrame::StyledPanel</enum></property>
-      <property name="frameShadow"><enum>QFrame::Sunken</enum></property>
      </widget>
-    </item>
-    <item>
-     <layout class="QVBoxLayout" name="rightLayout">
-      <item>
-       <widget class="QGroupBox" name="groupGrid">
-        <property name="title"><string>Grid</string></property>
-        <layout class="QGridLayout" name="gridLayout">
-         <item row="0" column="0">
-          <widget class="QLabel" name="label">
-           <property name="text"><string>Cell Size (Zoom)</string></property>
-          </widget>
-         </item>
-         <item row="0" column="1">
-          <widget class="QSpinBox" name="spinGridSize">
-           <property name="minimum"><number>5</number></property>
-           <property name="maximum"><number>60</number></property>
-           <property name="value"><number>20</number></property>
-          </widget>
-         </item>
-         <item row="1" column="0" colspan="2">
-          <widget class="QPushButton" name="btnDrawGrid">
-           <property name="text"><string>Reset (Clear All)</string></property>
-          </widget>
-         </item>
-         <item row="2" column="0">
-          <widget class="QPushButton" name="btnScrollLeft">
-           <property name="text"><string>Scroll Left</string></property>
-          </widget>
-         </item>
-         <item row="2" column="1">
-          <widget class="QPushButton" name="btnScrollRight">
-           <property name="text"><string>Scroll Right</string></property>
-          </widget>
-         </item>
-        </layout>
-       </widget>
-      </item>
-      <item>
-       <widget class="QGroupBox" name="groupMode">
-        <property name="title"><string>Mode</string></property>
-        <layout class="QVBoxLayout" name="modeLayout">
-         <item>
-          <widget class="QPushButton" name="btnEditMode">
-           <property name="text"><string>Edit Terrain</string></property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QPushButton" name="btnStartGame">
-           <property name="text"><string>Start Game</string></property>
-          </widget>
-         </item>
-        </layout>
-       </widget>
-      </item>
-      <item>
-       <widget class="QLabel" name="lblInfo">
-        <property name="text"><string>Instructions will appear here.</string></property>
-        <property name="wordWrap"><bool>true</bool></property>
-       </widget>
-      </item>
-      <item>
-       <spacer name="verticalSpacer">
-        <property name="orientation"><enum>Qt::Vertical</enum></property>
-        <property name="sizeHint" stdset="0">
-         <size><width>20</width><height>40</height></size>
-        </property>
-       </spacer>
-      </item>
-     </layout>
     </item>
    </layout>
   </widget>
+  <widget class="QStatusBar" name="statusbar"/>
  </widget>
- <customwidgets>
-  <customwidget>
-   <class>my_label</class>
-   <extends>QLabel</extends>
-   <header>my_label.h</header>
-  </customwidget>
- </customwidgets>
  <resources/>
  <connections/>
 </ui>
