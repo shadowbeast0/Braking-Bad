@@ -60,7 +60,7 @@ MainWindow::MainWindow(QWidget *parent)
 
     m_timer = new QTimer(this);
     connect(m_timer, &QTimer::timeout, this, &MainWindow::gameLoop);
-    m_timer->start(5);
+    m_timer->start(10);
 
     m_camX = m_cameraX;
     m_camY = m_cameraY;
@@ -112,7 +112,7 @@ void MainWindow::gameLoop() {
     m_cameraX = int(std::lround(m_camX));
     m_cameraY = int(std::lround(m_camY));
 
-    if (targetX > m_cameraXFarthest) {
+    while (targetX > m_cameraXFarthest) {
         m_cameraXFarthest += m_step;
         m_slope += (m_dist(m_rng) - static_cast<float>(m_lastY) / height()) * m_difficulty;
         m_slope = std::clamp(m_slope, -1.0f, 1.0f);
@@ -476,10 +476,17 @@ void MainWindow::drawHUDFuel(QPainter& p) {
         QColor c = (t<0.5) ? lerp(startC, midC, t*2) : lerp(midC, endC, (t-0.5)*2);
         for (int y=0;y<barH;++y) plotGridPixel(p, gx+x, gy+y, c);
     }
-    for (int y=0;y<barH;++y){ plotGridPixel(p,gx-1,gy+y,QColor(35,35,48)); plotGridPixel(p,gx+wcells,gy+y,QColor(35,35,48)); }
-    for (int x=-1;x<=wcells;++x){ plotGridPixel(p,gx+x,gy-1,QColor(35,35,48)); plotGridPixel(p,gx+x,gy+barH,QColor(35,35,48)); }
+    for (int y=0;y<barH;++y){
+        plotGridPixel(p,gx-1,gy+y,QColor(35,35,48));
+        plotGridPixel(p,gx+wcells,gy+y,QColor(35,35,48));
+    }
+    for (int x=-1;x<=wcells;++x){
+        plotGridPixel(p,gx+x,gy-1,QColor(35,35,48));
+        plotGridPixel(p,gx+x,gy+barH,QColor(35,35,48));
+    }
     int tickEvery = std::max(6, wcells/6);
-    for (int x=tickEvery; x<wcells; x+=tickEvery) plotGridPixel(p, gx+x, gy+barH, QColor(80,80,70));
+    for (int x=tickEvery; x<wcells; x+=tickEvery)
+        plotGridPixel(p, gx+x, gy+barH, QColor(80,80,70));
 }
 
 double MainWindow::averageSpeed() const {

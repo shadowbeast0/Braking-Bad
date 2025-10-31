@@ -88,7 +88,7 @@ private:
     std::uniform_real_distribution<float> m_dist;
 
     static constexpr int PIXEL_SIZE = 6;
-    bool m_showGrid = false;
+    bool m_showGrid = true;
 
     QHash<int,int> m_heightAtGX;
 
@@ -151,7 +151,7 @@ private:
     double m_nitroDirY = 1.0;
     int m_nitroCeilY = -1000000000;
     static constexpr double NITRO_THRUST = 0.125;
-    static constexpr double NITRO_DURATION_SECOND = 1.0;
+    static constexpr double NITRO_DURATION_SECOND = 3;
 };
 
 #endif
