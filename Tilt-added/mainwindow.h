@@ -41,7 +41,7 @@ private:
 
     // ===== Filled terrain helpers =====
     void drawFilledTerrain(QPainter& p);
-    QColor grassShadeForBlock(int worldGX, int worldGY) const;
+    QColor grassShadeForBlock(int worldGX, int worldGY, bool greenify) const;
     static inline quint32 hash2D(int x, int y) {
         // FNV-1a (deterministic)
         // quint32 h = 2166136261u;
@@ -97,6 +97,7 @@ private:
     // Grass shading (Minecraft-like): uniform patches per block of world grid
     static constexpr int SHADING_BLOCK = 3; // in grid cells
     QVector<QColor> m_grassPalette;         // filled in ctor
+    QVector<QColor> m_dirtPalette;
 
     int leftmostTerrainX() const;
 };
