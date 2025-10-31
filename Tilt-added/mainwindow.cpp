@@ -19,130 +19,200 @@ MainWindow::MainWindow(QWidget *parent)
     setAutoFillBackground(true);
     setPalette(pal);
 
-    // Pleasant “Minecraft-ish” grass palette
+    // // Pleasant “Minecraft-ish” grass palette
+    // m_grassPalette = {
+    //     QColor(  85, 195, 120),  // brighter2
+    //     QColor( 106, 210, 132),  // brighter+2
+    //     QColor(  45, 150,  55),  // darker2
+    //     QColor( 162, 143,  63),  // base
+    //     QColor( 179, 161,  70),  // brighter
+    //     QColor( 196, 189,  80),  // brighter+
+    //     QColor( 153, 130,  55),   // darker
+    //     QColor( 100, 130,  55),   // darker
+    //     QColor(  65, 183, 103),  // base2
+    //     QColor(  85, 195, 120),  // brighter2
+    //     QColor( 160, 180, 52),  // brighter+2
+    //     QColor(  45, 150,  55),  // darker2
+    //     QColor( 162, 143,  63),  // base
+    //     QColor( 106, 210, 132),  // brighter+2
+    //     QColor(  45, 150,  55),  // darker2
+    //     QColor( 162, 143,  63),  // base
+    //     QColor( 179, 161,  70),  // brighter
+    //     QColor( 196, 189,  80),  // brighter+
+    //     QColor( 153, 130,  55),  // darker
+    //     QColor( 179, 161,  70),  // brighter
+    //     QColor( 196, 189,  80),  // brighter+
+    //     QColor( 153, 130,  55),   // darker
+    //     QColor( 196, 189,  80),  // brighter+
+    //     QColor(  65, 183, 103),  // base2
+    //     QColor(  85, 195, 120),  // brighter2
+    //     QColor( 106, 210, 132),  // brighter+2
+    //     QColor( 153, 130,  55),   // darker
+    //     QColor(  95, 133, 33),  // base2
+    //     QColor(  85, 195, 120),  // brighter2
+    //     QColor( 162, 143,  63),  // base
+    //     QColor( 179, 161,  70),  // brighter
+    //     QColor(  45, 150,  55),   // darker2
+    //     QColor(  65, 183, 103),  // base2
+    //     QColor(  85, 195, 120),  // brighter2
+    //     QColor( 106, 210, 132),  // brighter+2
+    //     QColor(  45, 150,  55),  // darker2
+    //     QColor( 162, 143,  63),  // base
+    //     QColor( 159, 171,  70),  // brighter
+    //     QColor( 196, 189,  80),  // brighter+
+    //     QColor(  65, 183, 103),   // base2
+
+    //     QColor( 179, 161,  70),  // brighter
+    //     QColor( 196, 189,  80),  // brighter+
+    //     QColor( 153, 130,  55),   // darker
+    //     QColor( 196, 189,  80),  // brighter+
+    //     QColor(  65, 183, 103),  // base2
+    //     QColor(  85, 195, 120),  // brighter2
+    //     QColor( 106, 210, 132),  // brighter+2
+    //     QColor( 160, 180, 52),  // brighter+2
+    //     QColor(  45, 150,  55),  // darker2
+    //     QColor( 162, 143,  63),  // base
+    //     QColor( 106, 210, 132),  // brighter+2
+    //     QColor(  45, 150,  55),  // darker2
+    //     QColor( 162, 143,  63),  // base
+    //     QColor( 179, 161,  70),  // brighter
+    //     QColor( 196, 189,  80),  // brighter+
+    //     QColor( 153, 130,  55),  // darker
+    //     QColor( 179, 161,  70),  // brighter
+    //     QColor(  45, 150,  55),   // darker2
+    //     QColor(  65, 183, 103),  // base2
+    //     QColor(  85, 195, 120),  // brighter2
+    //     QColor( 106, 210, 132),  // brighter+2
+    //     QColor(  45, 150,  55),  // darker2
+    //     QColor( 162, 143,  63),  // base
+    //     QColor( 159, 171,  70),  // brighter
+    //     QColor( 196, 189,  80),  // brighter+
+    //     QColor(  65, 183, 103),   // base2
+    //     QColor( 153, 130,  55),   // darker
+    //     QColor(  95, 133, 33),  // base2
+    //     QColor(  85, 195, 120),  // brighter2
+    //     QColor( 106, 210, 132),  // brighter+2
+    //     QColor(  45, 150,  55),  // darker2
+    //     QColor( 162, 143,  63),  // base
+    //     QColor( 179, 161,  70),  // brighter
+    //     QColor( 196, 189,  80),  // brighter+
+    //     QColor( 153, 130,  55),   // darker
+    //     QColor( 100, 130,  55),   // darker
+    //     QColor(  65, 183, 103),  // base2
+    //     QColor(  85, 195, 120),  // brighter2
+    //     QColor( 162, 143,  63),  // base
+    //     QColor(  85, 195, 120),  // brighter2
+
+    //     QColor( 162, 143,  63),  // base
+    //     QColor( 179, 161,  70),  // brighter
+    //     QColor( 196, 189,  80),  // brighter+
+    //     QColor( 153, 130,  55),  // darker
+    //     QColor( 179, 161,  70),  // brighter
+    //     QColor(  45, 150,  55),   // darker2
+    //     QColor(  65, 183, 103),  // base2
+    //     QColor(  85, 195, 120),  // brighter2
+    //     QColor( 162, 143,  63),  // base
+    //     QColor( 159, 171,  70),  // brighter
+    //     QColor( 162, 143,  63),  // base
+    //     QColor( 106, 210, 132),  // brighter+2
+    //     QColor(  45, 150,  55),  // darker2
+    //     QColor( 106, 210, 132),  // brighter+2
+    //     QColor(  45, 150,  55),  // darker2
+    //     QColor( 162, 143,  63),  // base
+    //     QColor( 179, 161,  70),  // brighter
+    //     QColor( 196, 189,  80),  // brighter+
+    //     QColor( 153, 130,  55),   // darker
+    //     QColor( 100, 130,  55),   // darker
+    //     QColor(  65, 183, 103),  // base2
+    //     QColor(  85, 195, 120),  // brighter2
+    //     QColor( 162, 143,  63),  // base
+    //     QColor(  85, 195, 120),  // brighter2
+    //     QColor( 196, 189,  80),  // brighter+
+    //     QColor(  65, 183, 103),   // base2
+    //     QColor( 153, 130,  55),   // darker
+    //     QColor( 153, 130,  55),   // darker
+    //     QColor( 196, 189,  80),  // brighter+
+    //     QColor(  65, 183, 103),  // base2
+    //     QColor(  85, 195, 120),  // brighter2
+    //     QColor( 106, 210, 132),  // brighter+2
+    //     QColor( 160, 180, 52),  // brighter+2
+    //     QColor(  45, 150,  55),  // darker2
+    //     QColor(  95, 133, 33),  // base2
+    //     QColor(  85, 195, 120),  // brighter2
+    //     QColor( 179, 161,  70),  // brighter
+    //     QColor( 196, 189,  80),  // brighter+
+    //     QColor( 106, 210, 132),  // brighter+2
+    //     QColor(  45, 150,  55)  // darker2
+    // };
+
     m_grassPalette = {
-        QColor(  85, 195, 120),  // brighter2
-        QColor( 106, 210, 132),  // brighter+2
-        QColor(  45, 150,  55),  // darker2
-        QColor( 162, 143,  63),  // base
-        QColor( 179, 161,  70),  // brighter
-        QColor( 196, 189,  80),  // brighter+
-        QColor( 153, 130,  55),   // darker
-        QColor( 100, 130,  55),   // darker
-        QColor(  65, 183, 103),  // base2
-        QColor(  85, 195, 120),  // brighter2
-        QColor( 160, 180, 52),  // brighter+2
-        QColor(  45, 150,  55),  // darker2
-        QColor( 162, 143,  63),  // base
-        QColor( 106, 210, 132),  // brighter+2
-        QColor(  45, 150,  55),  // darker2
-        QColor( 162, 143,  63),  // base
-        QColor( 179, 161,  70),  // brighter
-        QColor( 196, 189,  80),  // brighter+
-        QColor( 153, 130,  55),  // darker
-        QColor( 179, 161,  70),  // brighter
-        QColor( 196, 189,  80),  // brighter+
-        QColor( 153, 130,  55),   // darker
-        QColor( 196, 189,  80),  // brighter+
-        QColor(  65, 183, 103),  // base2
-        QColor(  85, 195, 120),  // brighter2
-        QColor( 106, 210, 132),  // brighter+2
-        QColor( 153, 130,  55),   // darker
-        QColor(  95, 133, 33),  // base2
-        QColor(  85, 195, 120),  // brighter2
-        QColor( 162, 143,  63),  // base
-        QColor( 179, 161,  70),  // brighter
-        QColor(  45, 150,  55),   // darker2
-        QColor(  65, 183, 103),  // base2
-        QColor(  85, 195, 120),  // brighter2
-        QColor( 106, 210, 132),  // brighter+2
-        QColor(  45, 150,  55),  // darker2
-        QColor( 162, 143,  63),  // base
-        QColor( 159, 171,  70),  // brighter
-        QColor( 196, 189,  80),  // brighter+
-        QColor(  65, 183, 103),   // base2
+        QColor(100, 140,  50),
+        QColor(115, 155,  60),
+        QColor(130, 170,  80),
+        QColor( 85, 120,  40),
+        QColor(100, 140,  50),
+        QColor(115, 155,  60),
+        QColor(130, 170,  80),
+        QColor(115, 155,  60),
+        QColor(130, 170,  80),
+        QColor( 85, 120,  40),
+        QColor( 85, 120,  40),
+        QColor(100, 140,  50),
+        QColor(100, 140,  50),
+        QColor(115, 155,  60),
+        QColor(130, 170,  80),
+        QColor( 85, 120,  40),
+        QColor(100, 140,  50),
+        QColor(115, 155,  60),
+        QColor( 85, 120,  40),
+        QColor(100, 140,  50),
+        QColor(115, 155,  60),
+        QColor(100, 140,  50),
+        QColor(115, 155,  60),
+        QColor(130, 170,  80),
+        QColor( 85, 120,  40),
+        QColor(130, 170,  80),
+        QColor(130, 170,  80),
+        QColor( 85, 120,  40),
+    };
 
-        QColor( 179, 161,  70),  // brighter
-        QColor( 196, 189,  80),  // brighter+
-        QColor( 153, 130,  55),   // darker
-        QColor( 196, 189,  80),  // brighter+
-        QColor(  65, 183, 103),  // base2
-        QColor(  85, 195, 120),  // brighter2
-        QColor( 106, 210, 132),  // brighter+2
-        QColor( 160, 180, 52),  // brighter+2
-        QColor(  45, 150,  55),  // darker2
-        QColor( 162, 143,  63),  // base
-        QColor( 106, 210, 132),  // brighter+2
-        QColor(  45, 150,  55),  // darker2
-        QColor( 162, 143,  63),  // base
-        QColor( 179, 161,  70),  // brighter
-        QColor( 196, 189,  80),  // brighter+
-        QColor( 153, 130,  55),  // darker
-        QColor( 179, 161,  70),  // brighter
-        QColor(  45, 150,  55),   // darker2
-        QColor(  65, 183, 103),  // base2
-        QColor(  85, 195, 120),  // brighter2
-        QColor( 106, 210, 132),  // brighter+2
-        QColor(  45, 150,  55),  // darker2
-        QColor( 162, 143,  63),  // base
-        QColor( 159, 171,  70),  // brighter
-        QColor( 196, 189,  80),  // brighter+
-        QColor(  65, 183, 103),   // base2
-        QColor( 153, 130,  55),   // darker
-        QColor(  95, 133, 33),  // base2
-        QColor(  85, 195, 120),  // brighter2
-        QColor( 106, 210, 132),  // brighter+2
-        QColor(  45, 150,  55),  // darker2
-        QColor( 162, 143,  63),  // base
-        QColor( 179, 161,  70),  // brighter
-        QColor( 196, 189,  80),  // brighter+
-        QColor( 153, 130,  55),   // darker
-        QColor( 100, 130,  55),   // darker
-        QColor(  65, 183, 103),  // base2
-        QColor(  85, 195, 120),  // brighter2
-        QColor( 162, 143,  63),  // base
-        QColor(  85, 195, 120),  // brighter2
-
-        QColor( 162, 143,  63),  // base
-        QColor( 179, 161,  70),  // brighter
-        QColor( 196, 189,  80),  // brighter+
-        QColor( 153, 130,  55),  // darker
-        QColor( 179, 161,  70),  // brighter
-        QColor(  45, 150,  55),   // darker2
-        QColor(  65, 183, 103),  // base2
-        QColor(  85, 195, 120),  // brighter2
-        QColor( 162, 143,  63),  // base
-        QColor( 159, 171,  70),  // brighter
-        QColor( 162, 143,  63),  // base
-        QColor( 106, 210, 132),  // brighter+2
-        QColor(  45, 150,  55),  // darker2
-        QColor( 106, 210, 132),  // brighter+2
-        QColor(  45, 150,  55),  // darker2
-        QColor( 162, 143,  63),  // base
-        QColor( 179, 161,  70),  // brighter
-        QColor( 196, 189,  80),  // brighter+
-        QColor( 153, 130,  55),   // darker
-        QColor( 100, 130,  55),   // darker
-        QColor(  65, 183, 103),  // base2
-        QColor(  85, 195, 120),  // brighter2
-        QColor( 162, 143,  63),  // base
-        QColor(  85, 195, 120),  // brighter2
-        QColor( 196, 189,  80),  // brighter+
-        QColor(  65, 183, 103),   // base2
-        QColor( 153, 130,  55),   // darker
-        QColor( 153, 130,  55),   // darker
-        QColor( 196, 189,  80),  // brighter+
-        QColor(  65, 183, 103),  // base2
-        QColor(  85, 195, 120),  // brighter2
-        QColor( 106, 210, 132),  // brighter+2
-        QColor( 160, 180, 52),  // brighter+2
-        QColor(  45, 150,  55),  // darker2
-        QColor(  95, 133, 33),  // base2
-        QColor(  85, 195, 120),  // brighter2
-        QColor( 179, 161,  70),  // brighter
-        QColor( 196, 189,  80),  // brighter+
-        QColor( 106, 210, 132),  // brighter+2
-        QColor(  45, 150,  55)  // darker2
+    m_dirtPalette = {
+        QColor(125, 105, 40),
+        QColor(135, 117, 50),
+        QColor(145, 125, 60),
+        QColor(145, 125, 60),
+        QColor(150, 120, 50),
+        QColor(120, 100, 30),
+        QColor(125, 105, 40),
+        QColor(150, 120, 50),
+        QColor(120, 100, 30),
+        QColor(150, 120, 50),
+        QColor(125, 105, 40),
+        QColor(135, 117, 50),
+        QColor(135, 117, 50),
+        QColor(145, 125, 60),
+        QColor(150, 120, 50),
+        QColor(120, 100, 30),
+        QColor(125, 105, 40),
+        QColor(135, 117, 50),
+        QColor(125, 105, 40),
+        QColor(135, 117, 50),
+        QColor(150, 120, 50),
+        QColor(145, 125, 60),
+        QColor(145, 125, 60),
+        QColor(145, 125, 60),
+        QColor(120, 100, 30),
+        QColor(125, 105, 40),
+        QColor(120, 100, 30),
+        QColor(120, 100, 30),
+        QColor(150, 120, 50),
+        QColor(125, 105, 40),
+        QColor(135, 117, 50),
+        QColor(135, 117, 50),
+        QColor(150, 120, 50),
+        QColor(145, 125, 60),
+        QColor(120, 100, 30),
+        QColor(150, 120, 50),
     };
 
     showFullScreen();
@@ -159,7 +229,7 @@ MainWindow::MainWindow(QWidget *parent)
     // Timer
     m_timer = new QTimer(this);
     connect(m_timer, &QTimer::timeout, this, &MainWindow::gameLoop);
-    m_timer->start(5);
+    m_timer->start(10);
 
     // Seed smoothed camera so we don’t “jump” on first frame
     m_camX = m_cameraX;
@@ -215,7 +285,7 @@ void MainWindow::gameLoop() {
     m_cameraY = int(std::lround(m_camY));
 
     // --- Terrain extension uses RAW target to avoid lag ---
-    if (targetX > m_cameraXFarthest) {
+    while (targetX > m_cameraXFarthest) {
         m_cameraXFarthest += m_step;
 
         m_slope += (m_dist(m_rng) - static_cast<float>(m_lastY) / height()) * m_difficulty;
@@ -344,22 +414,22 @@ void MainWindow::drawFilledTerrain(QPainter& p) {
         // Fill from ground down to bottom with uniform shade blocks
         for (int sGY = startScreenGY; sGY <= gridH(); ++sGY) {
             const int worldGY = sGY - camGY;
-            const QColor shade = grassShadeForBlock(worldGX, worldGY);
+            const QColor shade = grassShadeForBlock(worldGX, worldGY, (sGY < groundWorldGY + camGY + 3*SHADING_BLOCK));
             plotGridPixel(p, sgx, sGY, shade);
         }
 
-        // 1-cell darker “lip” at the surface
-        const QColor edge = grassShadeForBlock(worldGX, groundWorldGY).darker(115);
-        plotGridPixel(p, sgx, startScreenGY, edge);
+        // // 1-cell darker “lip” at the surface
+        const QColor edge = grassShadeForBlock(worldGX, groundWorldGY, true).darker(115);
+        plotGridPixel(p, sgx, groundWorldGY + camGY, edge);
     }
 }
 
-QColor MainWindow::grassShadeForBlock(int worldGX, int worldGY) const {
+QColor MainWindow::grassShadeForBlock(int worldGX, int worldGY, bool greenify) const {
     const int bx = worldGX / SHADING_BLOCK;
     const int by = worldGY / SHADING_BLOCK;
     const quint32 h = hash2D(bx, by);
-    const int idx = int(h % m_grassPalette.size());
-    return m_grassPalette[idx];
+    const int idx = ((greenify) ? int(h % m_grassPalette.size()) : int(h % m_dirtPalette.size()));
+    return (greenify) ? m_grassPalette[idx] : m_dirtPalette[idx];
 }
 
 /* =========================
