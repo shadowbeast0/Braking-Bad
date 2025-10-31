@@ -12,23 +12,28 @@ public:
     double m_vx = 0.0, m_vy = 0.0;
     double m_angle = 0.0;
     double m_omega = 0.0;
-    bool m_isRoot = false;
+    bool   m_isRoot = false;
 
     Wheel(int x, int y, int radius);
     void attach(Wheel* other);
 
-    // keep simulate signature from code 2 (includes nitro)
-    void simulate(const QList<Line>& lines, bool accelerating, bool braking, bool nitro);
+    // signature with nitro stays
+    void simulate(const QList<Line>& lines,
+                  bool accelerating,
+                  bool braking,
+                  bool nitro);
 
-    // returns (centerX, centerY, radius) in screen space after camera offset
-    std::optional<std::array<int, 3>> get(int x1, int y1, int x2, int y2, int cx, int cy) const;
+    // (centerX, centerY, radius) for rendering after camera offset
+    std::optional<std::array<int, 3>> get(
+        int x1, int y1, int x2, int y2, int cx, int cy
+        ) const;
 
 private:
     int m_radius;
     QList<Wheel*> m_others;
     QList<double> m_distances;
 
-    // constants copied from code 1
+    // constants from your tuned "code 1" physics (:contentReference[oaicite:8]{index=8})
     static constexpr double GRAVITY         = 0.1;
     static constexpr double AIR_RESISTANCE  = 0.9992;
     static constexpr double MAX_VELOCITY    = 30.0;

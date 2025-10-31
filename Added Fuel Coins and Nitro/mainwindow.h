@@ -32,15 +32,25 @@ private slots:
 private:
     void generateInitialTerrain();
 
+    
     void drawGridOverlay(QPainter& p);
     inline int gridW() const { return width()  / PIXEL_SIZE; }
     inline int gridH() const { return height() / PIXEL_SIZE; }
     void plotGridPixel(QPainter& p, int gx, int gy, const QColor& c);
     void drawCircleFilledMidpointGrid(QPainter& p, int gcx, int gcy, int gr, const QColor& c);
 
+    
     void drawFilledTerrain(QPainter& p);
+    void drawWorldFuel(QPainter& p);
+    void drawWorldCoins(QPainter& p);
     void drawNitroFlame(QPainter& p);
 
+    
+    void drawHUDFuel(QPainter& p);
+    void drawHUDCoins(QPainter& p);
+    void drawHUDNitro(QPainter& p);
+
+    
     QColor grassShadeForBlock(int worldGX, int worldGY, bool greenify) const;
     static inline quint32 hash2D(int x, int y) {
         quint32 h = 120003212u;
@@ -49,40 +59,49 @@ private:
         return (h ^ x) / (h ^ y) + (x * y) - (3 * x*x + 4 * y*y);
     }
 
+    
     void rasterizeSegmentToHeightMapWorld(int x1, int y1, int x2, int y2);
     void pruneHeightMap();
 
+    
     void updateCamera(double targetX, double targetY, double dtSeconds);
 
+    
     int groundGyNearestGX(int gx) const;
     double terrainTangentAngleAtX(double wx) const;
 
+    
     QElapsedTimer m_clock;
-    double m_camX = 0.0, m_camY = 0.0;
-    double m_camVX = 0.0, m_camVY = 0.0;
-    double m_camWN = 20.0;
+    double m_camX  = 0.0;
+    double m_camY  = 0.0;
+    double m_camVX = 0.0;
+    double m_camVY = 0.0;
+    double m_camWN   = 20.0;
     double m_camZeta = 0.98;
 
 private:
     QTimer *m_timer = nullptr;
-    QList<Line> m_lines;
+
+    QList<Line>   m_lines;
     QList<Wheel*> m_wheels;
 
     int   m_lastX = 0;
     int   m_lastY = 0;
     float m_slope = 0.0f;
+
     const int   m_step = 20;
-    float       m_difficulty = 0.005;
-    const float m_difficultyIncrement = 0.0001;
-    const float m_irregularity = 0.02;
+    float       m_difficulty = 0.005f;
+    const float m_difficultyIncrement = 0.0001f;
+    const float m_irregularity = 0.02f;
 
     int m_cameraX = 0;
     int m_cameraY = 200;
     int m_cameraXFarthest = 0;
 
-    bool m_accelerating = false;
-    bool m_braking = false;
-    bool m_nitro = false;
+    bool m_accelerating = false;   
+    bool m_braking      = false;   
+    bool m_nitroKey     = false;   
+    bool m_nitro        = false;   
 
     std::mt19937 m_rng;
     std::uniform_real_distribution<float> m_dist;
@@ -98,8 +117,10 @@ private:
 
     int leftmostTerrainX() const;
 
+    
     double m_elapsedSeconds = 0.0;
 
+    
     struct FuelCan { int wx; int wy; bool taken = false; };
     QVector<FuelCan> m_worldFuel;
     int m_lastPlacedFuelX = 0;
@@ -113,45 +134,44 @@ private:
     static constexpr int FUEL_PICKUP_RADIUS = 18;
     static constexpr int FUEL_FLOOR_OFFSET_CELLS = 6;
 
-    static constexpr int HUD_TOP_MARGIN = 6;
+    static constexpr int HUD_TOP_MARGIN  = 6;
     static constexpr int HUD_LEFT_MARGIN = 4;
 
     static constexpr double FUEL_SPAWN_EASE = 0.4;
 
     int currentFuelSpacing();
     void maybePlaceFuelAtEdge();
-    void drawWorldFuel(QPainter& p);
-    void drawHUDFuel(QPainter& p);
+
     double averageSpeed() const;
 
+    
     struct Coin { int cx; int cy; bool taken = false; };
     QVector<Coin> m_worldCoins;
     int m_lastPlacedCoinX = 0;
     int m_coinCount = 0;
 
-    static constexpr int COIN_RADIUS_CELLS = 3;
-    static constexpr int COIN_PICKUP_RADIUS = 28;
-    static constexpr int COIN_FLOOR_OFFSET_CELLS = 6;
-    static constexpr int COIN_GROUP_MIN = 5;
-    static constexpr int COIN_GROUP_MAX = 16;
-    static constexpr int COIN_GROUP_STEP_MIN = 6;
-    static constexpr int COIN_GROUP_STEP_MAX = 9;
-    static constexpr int COIN_SPAWN_MARGIN_CELLS = 24;
+    static constexpr int COIN_RADIUS_CELLS        = 3;
+    static constexpr int COIN_PICKUP_RADIUS       = 28;
+    static constexpr int COIN_FLOOR_OFFSET_CELLS  = 6;
+    static constexpr int COIN_GROUP_MIN           = 5;
+    static constexpr int COIN_GROUP_MAX           = 16;
+    static constexpr int COIN_GROUP_STEP_MIN      = 6;
+    static constexpr int COIN_GROUP_STEP_MAX      = 9;
+    static constexpr int COIN_SPAWN_MARGIN_CELLS  = 24;
 
-    int currentCoinSpacing();
+    int  currentCoinSpacing();
     void maybePlaceCoinStreamAtEdge();
-    void drawWorldCoins(QPainter& p);
-    void drawHUDCoins(QPainter& p);
-    void drawHUDNitro(QPainter& p);
 
-    static constexpr int NITRO_MAX_ALT_CELLS = 128;
-    double m_nitroEndTime = 0.0;
-    double m_nitroCooldownUntil = 0.0;
-    double m_nitroDirX = 0.0;
-    double m_nitroDirY = 1.0;
-    int m_nitroCeilY = -1000000000;
-    static constexpr double NITRO_THRUST = 0.125;
-    static constexpr double NITRO_DURATION_SECOND = 3;
+    
+    static constexpr int    NITRO_MAX_ALT_CELLS      = 128;
+    static constexpr double NITRO_THRUST             = 0.125;
+    static constexpr double NITRO_DURATION_SECOND    = 3.0;  
+
+    double m_nitroEndTime        = 0.0;
+    double m_nitroCooldownUntil  = 0.0;
+    double m_nitroDirX           = 0.0;
+    double m_nitroDirY           = 1.0;
+    int    m_nitroCeilY          = -1000000000;
 };
 
 #endif
