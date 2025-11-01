@@ -62,6 +62,7 @@ private:
     
     void rasterizeSegmentToHeightMapWorld(int x1, int y1, int x2, int y2);
     void pruneHeightMap();
+    void ensureAheadTerrain(int worldX);
 
     
     void updateCamera(double targetX, double targetY, double dtSeconds);
@@ -149,6 +150,8 @@ private:
     QVector<Coin> m_worldCoins;
     int m_lastPlacedCoinX = 0;
     int m_coinCount = 0;
+    double m_lastCoinSpawnTimeSeconds = 0.0;
+
 
     static constexpr int COIN_RADIUS_CELLS        = 3;
     static constexpr int COIN_PICKUP_RADIUS       = 28;
@@ -158,6 +161,11 @@ private:
     static constexpr int COIN_GROUP_STEP_MIN      = 6;
     static constexpr int COIN_GROUP_STEP_MAX      = 9;
     static constexpr int COIN_SPAWN_MARGIN_CELLS  = 24;
+    static constexpr int COIN_STREAM_LEN          = 10;
+    static constexpr int COIN_STREAM_STEP_CELLS   = 7;
+    static constexpr int COIN_STREAM_SPACING_PX   = 800;
+    static constexpr int COIN_STREAM_AMP_CELLS    = 2;
+
 
     int  currentCoinSpacing();
     void maybePlaceCoinStreamAtEdge();
@@ -172,6 +180,30 @@ private:
     double m_nitroDirX           = 0.0;
     double m_nitroDirY           = 1.0;
     int    m_nitroCeilY          = -1000000000;
+
+    struct Cloud {
+        int wx;        // world x (px) of left edge
+        int wyCells;   // world y (in grid cells, NOT px) of top row of the cloud
+        int wCells;    // width in grid cells
+        int hCells;    // height in grid cells
+        quint32 seed;  // for per-cloud pixel noise
+    };
+
+    QVector<Cloud> m_clouds;
+    int m_lastCloudSpawnX = 0;
+
+
+    static constexpr int CLOUD_SPACING_PX        = 1200;
+    static constexpr int CLOUD_SKY_OFFSET_CELLS  = 40;
+    static constexpr int CLOUD_MIN_W_CELLS       = 10;
+    static constexpr int CLOUD_MAX_W_CELLS       = 18;
+    static constexpr int CLOUD_MIN_H_CELLS       = 4;
+    static constexpr int CLOUD_MAX_H_CELLS       = 7;
+
+    void maybeSpawnCloud();
+    void drawClouds(QPainter& p);
+
+
 };
 
 #endif
