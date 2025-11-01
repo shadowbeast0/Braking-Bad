@@ -1,15 +1,19 @@
 #include "wheel.h"
-#include <cmath>
+#include <QtMath>
 #include <algorithm>
 
 Wheel::Wheel(int x_, int y_, int radius)
     : x(x_), y(y_), m_radius(radius) {}
 
+int Wheel::getRadius() const {
+    return m_radius;
+}
+
 void Wheel::attach(Wheel* other) {
     m_others.append(other);
     double dx = other->x - x;
     double dy = other->y - y;
-    m_distances.append(std::sqrt(dx * dx + dy * dy));
+    m_distances.append(qSqrt(dx * dx + dy * dy));
 }
 
 void Wheel::simulate(const QList<Line>& lines, bool accelerating, bool braking) {
@@ -17,72 +21,72 @@ void Wheel::simulate(const QList<Line>& lines, bool accelerating, bool braking) 
     x += m_vx;
     y -= m_vy;
 
-    // Gravity
-    m_vy -= GRAVITY;
+    // Apply forces
+    m_vy -= 0.02; // Gravity
+    m_vx *= 0.9999; // Air resistance
+    m_vy *= 0.9999; // Air resistance
 
-    // Air resistance / drag
-    m_vx *= AIR_RESISTANCE;
-    m_vy *= AIR_RESISTANCE;
+    const double friction = 0.999;
+    const double maxVelocity = 10.0;
 
-    // Ground collision / response (same as before)
+    // Ground collision and response
     for (const Line& line : lines) {
         double m = line.getSlope();
         double b = line.getIntercept();
-
-        double dist = std::abs(m * x - y + b) / std::sqrt(m * m + 1);
+        double dist = qAbs(m * x - y + b) / qSqrt(m * m + 1);
         double intersection_x = (m * (y - b) + x) / (m * m + 1);
 
-        int minX = std::min(line.getX1(), line.getX2());
-        int maxX = std::max(line.getX1(), line.getX2());
+        if (dist < m_radius && intersection_x >= line.getX1() && intersection_x <= line.getX2()) {
+            // Correct position to prevent sinking
+            while (dist < m_radius) {
+                y -= 1.0;
+                dist = qAbs(m * x - y + b) / qSqrt(m * m + 1);
+            }
 
-        if (dist < m_radius && intersection_x >= minX && intersection_x <= maxX) {
-            double overlap = m_radius - dist;
-            double normal_angle = std::atan2(-m, 1.0);
-            y -= overlap * std::cos(normal_angle);
-            x -= overlap * std::sin(normal_angle);
+            // Decompose velocity
+            double theta = -qAtan(m);
+            double vAlongLine0 = m_vx * qCos(theta) + m_vy * qSin(theta);
+            double vNormalToLine0 = m_vy * qCos(theta) - m_vx * qSin(theta);
 
-            // Rotate velocity into line coordinates
-            double theta = -std::atan(m);
-            double vAlongLine     = m_vx * std::cos(theta) + m_vy * std::sin(theta);
-            double vNormalToLine  = m_vy * std::cos(theta) - m_vx * std::sin(theta);
+            double vAlongLine1 = vAlongLine0 * friction;
+            // Sigmoid function for bounce
+            double vNormalToLine1 = vNormalToLine0 * (1.0 / (1.0 + qPow(3, -vNormalToLine0)));
 
-            // Response
-            vNormalToLine *= RESTITUTION;
-            vAlongLine    *= FRICTION;
+            // Apply player input
+            if (accelerating && vAlongLine1 < maxVelocity) vAlongLine1 += 0.2;
+            if (braking && vAlongLine1 > -maxVelocity) vAlongLine1 -= 0.1;
 
-            // Player input along the tangent
-            if (accelerating && vAlongLine <  MAX_VELOCITY) vAlongLine += ACCELERATION;
-            if (braking     && vAlongLine > -MAX_VELOCITY) vAlongLine -= DECELERATION;
-
-            // Rotate back to world coordinates
-            m_vx = vAlongLine * std::cos(theta) - vNormalToLine * std::sin(theta);
-            m_vy = vAlongLine * std::sin(theta) + vNormalToLine * std::cos(theta);
+            // Recompose velocity
+            m_vx = vAlongLine1 * qCos(theta) - vNormalToLine1 * qSin(theta);
+            m_vy = vAlongLine1 * qSin(theta) + vNormalToLine1 * qCos(theta);
         }
     }
 
-    // Spring-damper constraints between attached wheels (same)
+    // Spring-damper constraints
     for (int i = 0; i < m_others.size(); ++i) {
         Wheel* other = m_others.at(i);
+        const double springConstant = 0.01;
+        const double dampingFactor = 0.05;
         double desiredDistance = m_distances.at(i);
 
         double deltaX = other->x - x;
         double deltaY = other->y - y;
-        double actualDistance = std::sqrt(deltaX * deltaX + deltaY * deltaY);
+        double actualDistance = qSqrt(deltaX * deltaX + deltaY * deltaY);
         if (actualDistance == 0) continue;
 
         double displacement = actualDistance - desiredDistance;
-        double springForceMagnitude = displacement * SPRING_CONSTANT;
+        double springForceMagnitude = displacement * springConstant;
 
         double unitX = -deltaX / actualDistance;
-        double unitY =  deltaY / actualDistance;
+        double unitY = deltaY / actualDistance;
 
         double forceX = unitX * springForceMagnitude;
         double forceY = unitY * springForceMagnitude;
 
         double relativeVx = other->m_vx - m_vx;
         double relativeVy = other->m_vy - m_vy;
-        double dampingForceX = relativeVx * DAMPING_FACTOR;
-        double dampingForceY = relativeVy * DAMPING_FACTOR;
+        double dampingForceX = relativeVx * dampingFactor;
+        double dampingForceY = relativeVy * dampingFactor;
 
         this->m_vx -= (forceX - dampingForceX);
         this->m_vy -= (forceY - dampingForceY);

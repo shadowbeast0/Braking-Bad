@@ -11,6 +11,7 @@
 #include <random>
 #include "line.h"
 #include "wheel.h"
+#include "car.h" // ADDED THIS INCLUDE
 
 class QKeyEvent;
 class QPainter;
@@ -30,7 +31,9 @@ private slots:
     void gameLoop();
 
 private:
+    void restartGame(); // ADDED THIS METHOD
     void generateInitialTerrain();
+    void updateCamera(double targetX, double targetY, double dtSeconds);
 
     // ===== Pixel grid helpers =====
     void drawGridOverlay(QPainter& p);
@@ -42,31 +45,22 @@ private:
     // ===== Filled terrain helpers =====
     void drawFilledTerrain(QPainter& p);
     QColor grassShadeForBlock(int worldGX, int worldGY) const;
-    static inline quint32 hash2D(int x, int y) {
-        // FNV-1a (deterministic)
-        quint32 h = 2166136261u;
-        h ^= quint32(x); h *= 16777619u;
-        h ^= quint32(y); h *= 16777619u;
-        return h;
-    }
+    static inline quint32 hash2D(int x, int y);
 
     // ===== Height-map (static terrain in world grid) =====
     void rasterizeSegmentToHeightMapWorld(int x1, int y1, int x2, int y2);
     void pruneHeightMap();
 
-    // ===== Camera smoothing =====
-    void updateCamera(double targetX, double targetY, double dtSeconds);
-    QElapsedTimer m_clock;          // high-res timebase
-    double m_camX = 0.0, m_camY = 0.0;   // smoothed camera (px)
-    double m_camVX = 0.0, m_camVY = 0.0; // smoothed camera velocity
-    double m_camWN  = 8.0;               // natural frequency (rad/s) → 6–12 is good
-    double m_camZeta = 0.9;              // damping (0.7–1.0)
-
 private:
     QTimer *m_timer = nullptr;
     QList<Line> m_lines;
     QList<Wheel*> m_wheels;
+    Car* m_car = nullptr; // ADDED Car object pointer
 
+    // Game state
+    bool m_gameOver = false; // ADDED Game state flag
+
+    // Terrain Generation
     int   m_lastX = 0;
     int   m_lastY = 0;
     float m_slope = 0.0f;
@@ -75,11 +69,12 @@ private:
     const float m_difficultyIncrement = 0.001f;
     const float m_irregularity = 0.5f;
 
-    // integer camera used by drawing/heightmap
+    // Camera
     int m_cameraX = 0;
     int m_cameraY = 200;
     int m_cameraXFarthest = 0;
 
+    // Input & State
     bool m_accelerating = false;
     bool m_braking = false;
 
@@ -87,15 +82,29 @@ private:
     std::uniform_real_distribution<float> m_dist;
 
     // Pixelation controls
-    static constexpr int PIXEL_SIZE = 8;   // size of one visual “pixel” in screen pixels
+    static constexpr int PIXEL_SIZE = 8;
     bool m_showGrid = true;
 
-    // World-grid ground height: column gx → row gy
+    // World-grid ground height
     QHash<int,int> m_heightAtGX;
 
-    // Grass shading (Minecraft-like): uniform patches per block of world grid
-    static constexpr int SHADING_BLOCK = 6; // in grid cells
-    QVector<QColor> m_grassPalette;         // filled in ctor
+    // Grass shading
+    static constexpr int SHADING_BLOCK = 6;
+    QVector<QColor> m_grassPalette;
+
+    // Camera smoothing
+    QElapsedTimer m_clock;
+    double m_camX = 0.0, m_camY = 0.0;
+    double m_camVX = 0.0, m_camVY = 0.0;
+    double m_camWN  = 8.0;
+    double m_camZeta = 0.9;
 };
+
+inline quint32 MainWindow::hash2D(int x, int y) {
+    quint32 h = 2166136261u;
+    h ^= quint32(x); h *= 16777619u;
+    h ^= quint32(y); h *= 16777619u;
+    return h;
+}
 
 #endif // MAINWINDOW_H

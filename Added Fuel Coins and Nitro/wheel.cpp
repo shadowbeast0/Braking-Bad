@@ -6,6 +6,8 @@ Wheel::Wheel(int x_, int y_, int radius)
     : x(x_), y(y_), m_radius(radius)
 {}
 
+int Wheel::radius() const { return m_radius; }
+
 void Wheel::attach(Wheel* other) {
     m_others.append(other);
 
@@ -17,10 +19,7 @@ void Wheel::attach(Wheel* other) {
     other->m_isRoot = false;
 }
 
-void Wheel::simulate(const QList<Line>& lines,
-                     bool accelerating,
-                     bool braking,
-                     bool nitro)
+void Wheel::simulate(const QList<Line>& lines, bool accelerating, bool braking, bool nitro)
 {
     // integrate position
     x += m_vx;
@@ -186,16 +185,14 @@ void Wheel::simulate(const QList<Line>& lines,
         double dampingForceX = relativeVx * DAMPING_FACTOR;
         double dampingForceY = relativeVy * DAMPING_FACTOR;
 
-        m_vx       -= (forceX - dampingForceX);
-        m_vy       -= (forceY - dampingForceY);
+        m_vx -= (forceX - dampingForceX);
+        m_vy -= (forceY - dampingForceY);
         other->m_vx += (forceX - dampingForceX);
         other->m_vy += (forceY - dampingForceY);
     }
 }
 
-std::optional<std::array<int, 3>> Wheel::get(int x1, int y1,
-                                             int x2, int y2,
-                                             int cx, int cy) const
+std::optional<std::array<int, 3>> Wheel::get(int x1, int y1, int x2, int y2, int cx, int cy) const
 {
     if (x + m_radius + cx < x1 ||
         x - m_radius + cx > x2 ||

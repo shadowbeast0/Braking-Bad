@@ -32,25 +32,25 @@ private slots:
 private:
     void generateInitialTerrain();
 
-    
+
     void drawGridOverlay(QPainter& p);
     inline int gridW() const { return width()  / PIXEL_SIZE; }
     inline int gridH() const { return height() / PIXEL_SIZE; }
     void plotGridPixel(QPainter& p, int gx, int gy, const QColor& c);
     void drawCircleFilledMidpointGrid(QPainter& p, int gcx, int gcy, int gr, const QColor& c);
 
-    
+
     void drawFilledTerrain(QPainter& p);
     void drawWorldFuel(QPainter& p);
     void drawWorldCoins(QPainter& p);
     void drawNitroFlame(QPainter& p);
 
-    
+
     void drawHUDFuel(QPainter& p);
     void drawHUDCoins(QPainter& p);
     void drawHUDNitro(QPainter& p);
 
-    
+
     QColor grassShadeForBlock(int worldGX, int worldGY, bool greenify) const;
     static inline quint32 hash2D(int x, int y) {
         quint32 h = 120003212u;
@@ -59,19 +59,19 @@ private:
         return (h ^ x) / (h ^ y) + (x * y) - (3 * x*x + 4 * y*y);
     }
 
-    
+
     void rasterizeSegmentToHeightMapWorld(int x1, int y1, int x2, int y2);
     void pruneHeightMap();
     void ensureAheadTerrain(int worldX);
 
-    
+
     void updateCamera(double targetX, double targetY, double dtSeconds);
 
-    
+
     int groundGyNearestGX(int gx) const;
     double terrainTangentAngleAtX(double wx) const;
 
-    
+
     QElapsedTimer m_clock;
     double m_camX  = 0.0;
     double m_camY  = 0.0;
@@ -99,10 +99,10 @@ private:
     int m_cameraY = 200;
     int m_cameraXFarthest = 0;
 
-    bool m_accelerating = false;   
-    bool m_braking      = false;   
-    bool m_nitroKey     = false;   
-    bool m_nitro        = false;   
+    bool m_accelerating = false;
+    bool m_braking      = false;
+    bool m_nitroKey     = false;
+    bool m_nitro        = false;
 
     std::mt19937 m_rng;
     std::uniform_real_distribution<float> m_dist;
@@ -118,10 +118,10 @@ private:
 
     int leftmostTerrainX() const;
 
-    
+
     double m_elapsedSeconds = 0.0;
 
-    
+
     struct FuelCan { int wx; int wy; bool taken = false; };
     QVector<FuelCan> m_worldFuel;
     int m_lastPlacedFuelX = 0;
@@ -145,7 +145,7 @@ private:
 
     double averageSpeed() const;
 
-    
+
     struct Coin { int cx; int cy; bool taken = false; };
     QVector<Coin> m_worldCoins;
     int m_lastPlacedCoinX = 0;
@@ -170,10 +170,10 @@ private:
     int  currentCoinSpacing();
     void maybePlaceCoinStreamAtEdge();
 
-    
+
     static constexpr int    NITRO_MAX_ALT_CELLS      = 128;
     static constexpr double NITRO_THRUST             = 0.125;
-    static constexpr double NITRO_DURATION_SECOND    = 3.0;  
+    static constexpr double NITRO_DURATION_SECOND    = 3.0;
 
     double m_nitroEndTime        = 0.0;
     double m_nitroCooldownUntil  = 0.0;

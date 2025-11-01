@@ -15,6 +15,8 @@ public:
     bool   m_isRoot = false;
 
     Wheel(int x, int y, int radius);
+    int radius() const;
+
     void attach(Wheel* other);
 
     // signature with nitro stays

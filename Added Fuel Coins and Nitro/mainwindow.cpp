@@ -59,7 +59,7 @@ MainWindow::MainWindow(QWidget *parent)
 
     m_timer = new QTimer(this);
     connect(m_timer, &QTimer::timeout, this, &MainWindow::gameLoop);
-    m_timer->start(10);  
+    m_timer->start(10);
 
     m_camX = m_cameraX;
     m_camY = m_cameraY;
@@ -113,14 +113,14 @@ void MainWindow::gameLoop() {
         avgY /= m_wheels.size();
     }
 
-    
+
     const double targetX = avgX - 200.0;
     const double targetY = -avgY + height() / 2.0;
     updateCamera(targetX, targetY, dt);
     m_cameraX = int(std::lround(m_camX));
     m_cameraY = int(std::lround(m_camY));
 
-    
+
     while (targetX > m_cameraXFarthest) {
         m_cameraXFarthest += m_step;
 
@@ -150,13 +150,13 @@ void MainWindow::gameLoop() {
         maybeSpawnCloud();
     }
 
-    
-    
-    
-    
-    
-    
-    
+
+
+
+
+
+
+
     bool wantNitro = m_nitroKey;
 
     if (!m_nitro) {
@@ -167,18 +167,18 @@ void MainWindow::gameLoop() {
             m_nitro = true;
             m_nitroEndTime = m_elapsedSeconds + NITRO_DURATION_SECOND;
 
-            
+
             const double launchAngle = terrainTangentAngleAtX(avgX) + M_PI/3.0;
             m_nitroDirX = std::cos(launchAngle);
             m_nitroDirY = std::sin(launchAngle);
 
-            
+
             int gx = int(avgX / PIXEL_SIZE);
             int gyGround = groundGyNearestGX(gx);
             m_nitroCeilY = (gyGround - NITRO_MAX_ALT_CELLS) * PIXEL_SIZE;
         }
     } else {
-        
+
         if (!wantNitro ||
             m_fuel <= 0.0 ||
             m_elapsedSeconds >= m_nitroEndTime)
@@ -188,11 +188,11 @@ void MainWindow::gameLoop() {
         }
     }
 
-    
-    
-    
-    
-    
+
+
+
+
+
     const bool allowInput = (m_fuel > 0.0);
 
     bool accelDrive = false;
@@ -210,7 +210,7 @@ void MainWindow::gameLoop() {
 
         if (allowInput) {
             if (bothKeys) {
-                
+
                 accelDrive = true;
                 brakeDrive = true;
             } else {
@@ -227,13 +227,13 @@ void MainWindow::gameLoop() {
         w->simulate(m_lines, accelDrive, brakeDrive, nitroDrive);
     }
 
-    
+
     if (m_nitro) {
         for (Wheel* w : m_wheels) {
             w->m_vx += NITRO_THRUST * m_nitroDirX;
             w->m_vy += NITRO_THRUST * m_nitroDirY;
 
-            
+
             if (w->y < m_nitroCeilY) {
                 w->y = m_nitroCeilY;
                 if (w->m_vy > 0.0) {
@@ -243,7 +243,7 @@ void MainWindow::gameLoop() {
         }
     }
 
-    
+
     if (m_fuel > 0.0) {
         double baseBurn = FUEL_BASE_BURN_PER_SEC * dt;
         double extra = 0.0;
@@ -254,7 +254,7 @@ void MainWindow::gameLoop() {
         m_fuel = std::max(0.0, m_fuel - burnMult * (baseBurn + extra));
     }
 
-    
+
     const int minX = leftmostTerrainX();
     for (Wheel* w : m_wheels) {
         if (w->x < minX) {
@@ -264,7 +264,7 @@ void MainWindow::gameLoop() {
         }
     }
 
-    
+
     if (!m_wheels.isEmpty()) {
         for (FuelCan& f : m_worldFuel) {
             if (f.taken) continue;
@@ -288,7 +288,7 @@ void MainWindow::gameLoop() {
         }
     }
 
-    
+
     if (!m_wheels.isEmpty()) {
         for (Coin& c : m_worldCoins) {
             if (c.taken) continue;
@@ -324,7 +324,7 @@ void MainWindow::paintEvent(QPaintEvent *event) {
     p.setRenderHint(QPainter::Antialiasing, true);
     p.setPen(Qt::NoPen);
 
-    
+
     const int camGX = m_cameraX / PIXEL_SIZE;
     const int camGY = m_cameraY / PIXEL_SIZE;
     const int offX  = -(m_cameraX - camGX * PIXEL_SIZE);
@@ -342,7 +342,7 @@ void MainWindow::paintEvent(QPaintEvent *event) {
     drawWorldCoins(p);
     drawNitroFlame(p);
 
-    
+
     const QColor wheelColor(40, 50, 60);
     for (const Wheel* wheel : m_wheels) {
         if (auto info = wheel->get(0, 0, width(), height(), -m_cameraX, m_cameraY)) {
@@ -697,14 +697,14 @@ void MainWindow::drawHUDFuel(QPainter& p) {
     QColor midC  (250,230,80);
     QColor endC  (230,50,40);
 
-    
+
     for (int x=0; x<wcells; ++x) {
         for (int y=0; y<barH; ++y) {
             plotGridPixel(p, gx+x, gy+y, QColor(20,14,24));
         }
     }
 
-    
+
     for (int x=0; x<filled; ++x) {
         double t = double(x)/std::max(wcells-1,1);
         QColor c = (t<0.5)
@@ -716,7 +716,7 @@ void MainWindow::drawHUDFuel(QPainter& p) {
         }
     }
 
-    
+
     for (int y=0; y<barH; ++y) {
         plotGridPixel(p,gx-1,      gy+y,QColor(35,35,48));
         plotGridPixel(p,gx+wcells, gy+y,QColor(35,35,48));
@@ -726,7 +726,7 @@ void MainWindow::drawHUDFuel(QPainter& p) {
         plotGridPixel(p,gx+x,gy+barH,   QColor(35,35,48));
     }
 
-    
+
     int tickEvery = std::max(6, wcells/6);
     for (int x=tickEvery; x<wcells; x+=tickEvery) {
         plotGridPixel(p, gx+x, gy+barH, QColor(80,80,70));
@@ -1021,7 +1021,7 @@ void MainWindow::drawHUDNitro(QPainter& p) {
         plotGridPixel(p, baseGX+gx, baseGY+gy, c);
     };
 
-    
+
     px(1,1,hull); px(2,1,hull); px(3,1,hull); px(4,1,hull);
     px(1,2,hull); px(2,2,windowC); px(3,2,hull); px(4,2,hull); px(5,2,tip);
     px(1,3,hull); px(2,3,hull);    px(3,3,hull); px(4,3,hull);
@@ -1075,6 +1075,6 @@ double MainWindow::terrainTangentAngleAtX(double wx) const {
 
     double dyCells = double(gyR - gyL);
 
-    
+
     return std::atan2(-dyCells, 2.0);
 }
