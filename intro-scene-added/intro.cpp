@@ -7,25 +7,6 @@
 #include <cmath>
 #include <algorithm>
 
-// 5x7 bitmap font for characters we use
-static const QHash<QChar, std::array<uint8_t,7>> k5x7 = {
-    {'A',{0x1E,0x11,0x11,0x1F,0x11,0x11,0x11}},
-    {'C',{0x0E,0x11,0x10,0x10,0x10,0x11,0x0E}},
-    {'E',{0x1F,0x10,0x10,0x1E,0x10,0x10,0x1F}},
-    {'F',{0x1F,0x10,0x10,0x1E,0x10,0x10,0x10}},
-    {'G',{0x0E,0x11,0x10,0x10,0x13,0x11,0x0E}},
-    {'H',{0x11,0x11,0x11,0x1F,0x11,0x11,0x11}},
-    {'I',{0x1F,0x04,0x04,0x04,0x04,0x04,0x1F}},
-    {'M',{0x11,0x1B,0x15,0x15,0x11,0x11,0x11}},
-    {'N',{0x11,0x19,0x15,0x13,0x11,0x11,0x11}},
-    {'R',{0x1E,0x11,0x11,0x1E,0x14,0x12,0x11}},
-    {'S',{0x0F,0x10,0x10,0x0E,0x01,0x01,0x1E}},
-    {'T',{0x1F,0x04,0x04,0x04,0x04,0x04,0x04}},
-    {'X',{0x11,0x0A,0x04,0x04,0x0A,0x11,0x11}},
-    {'1',{0x04,0x0C,0x04,0x04,0x04,0x04,0x0E}},
-    {':',{0x04,0x04,0x00,0x00,0x04,0x04,0x00}},
-    {' ',{0x00,0x00,0x00,0x00,0x00,0x00,0x00}}
-};
 
 IntroScreen::IntroScreen(QWidget* parent) : QWidget(parent) {
     setAttribute(Qt::WA_OpaquePaintEvent);
@@ -53,8 +34,7 @@ IntroScreen::IntroScreen(QWidget* parent) : QWidget(parent) {
             m_slope += (0.5f - float(m_lastY) / std::max(1,height())) * m_difficulty;
             m_slope = std::clamp(m_slope, -1.0f, 1.0f);
 
-            const int newY = m_lastY
-                             + std::lround(m_slope * std::pow(std::abs(m_slope), 0.02f) * STEP);
+            const int newY = m_lastY + std::lround(m_slope * std::pow(std::abs(m_slope), 0.02f) * STEP);
 
             Line seg(m_lastX, m_lastY, m_lastX + STEP, newY);
             m_lines.append(seg);
@@ -70,6 +50,7 @@ IntroScreen::IntroScreen(QWidget* parent) : QWidget(parent) {
             }
 
             m_difficulty += DIFF_INC;
+            maybeSpawnCloud();
         }
 
         update();
@@ -81,8 +62,7 @@ IntroScreen::IntroScreen(QWidget* parent) : QWidget(parent) {
         m_slope += (0.5f - float(m_lastY) / std::max(1,height())) * m_difficulty;
         m_slope = std::clamp(m_slope, -1.0f, 1.0f);
 
-        const int newY = m_lastY
-                         + std::lround(m_slope * std::pow(std::abs(m_slope), 0.02f) * STEP);
+        const int newY = m_lastY + std::lround(m_slope * std::pow(std::abs(m_slope), 0.02f) * STEP);
 
         Line seg(i - STEP, m_lastY, i, newY);
         m_lines.append(seg);
@@ -98,25 +78,99 @@ IntroScreen::IntroScreen(QWidget* parent) : QWidget(parent) {
 }
 
 int IntroScreen::titleScale() const {
-    int s = std::clamp(gridH() / (7 * 6), 2, 4);
-    return s;
+    return std::clamp(gridH() / (7 * 12), 2, 4);
 }
 
 int IntroScreen::titleYCells() const {
-    int ts = titleScale();
-    return (gridH() - 7 * ts) / 2;
+    return std::max(2, gridH() / 5);
 }
 
-int IntroScreen::startTopCells(int tScale) const {
-    int titleH = 7 * tScale;
-    int gap = std::max(6, gridH() / 24);
-    return titleYCells() + titleH + gap;
+int IntroScreen::startTopCells(int) const {
+    int btnH = std::max(10, gridH()/18);
+    int gap  = std::max(10,  gridH()/40);
+    int bottom = std::max(30, gridH()/24);
+    return gridH() - (2*btnH + gap + bottom);
 }
 
 int IntroScreen::exitTopCells(int btnHCells) const {
-    int gap = std::max(5, gridH() / 28);
-    return startTopCells(titleScale()) + btnHCells + gap;
+    int bottom = std::max(30, gridH()/24);
+    return gridH() - (btnHCells + bottom);
 }
+
+void IntroScreen::maybeSpawnCloud() {
+    if (m_lastX - m_lastCloudSpawnX < CLOUD_SPACING_PX) return;
+
+    int gx = m_lastX / PIXEL_SIZE;
+    auto it = m_heightAtGX.constFind(gx);
+    if (it == m_heightAtGX.constEnd()) return;
+
+    int gyGround = it.value();
+
+    auto mix = [](quint32 v, int shift, int span, int base){
+        return base + int(((v >> shift) % quint32(span)));
+    };
+    quint32 h = 120003212u ^ quint32(m_lastX * 2654435761u);
+
+    int wCells = mix(h, 0,  CLOUD_MAX_W_CELLS - CLOUD_MIN_W_CELLS + 1, CLOUD_MIN_W_CELLS);
+    int hCells = mix(h, 8,  CLOUD_MAX_H_CELLS - CLOUD_MIN_H_CELLS + 1, CLOUD_MIN_H_CELLS);
+    int skyLift = CLOUD_SKY_OFFSET_CELLS + mix(h, 16, 11, 0);
+
+    int cloudTopCells = gyGround - skyLift;
+    if (cloudTopCells < 0) cloudTopCells = 0;
+
+    Cloud cl;
+    cl.wx = m_lastX;
+    cl.wyCells = cloudTopCells;
+    cl.wCells = wCells;
+    cl.hCells = hCells;
+    cl.seed = h;
+    m_clouds.append(cl);
+
+    m_lastCloudSpawnX = m_lastX;
+
+    int leftLimit = (m_lines.isEmpty() ? 0 : m_lines.first().getX1()) - width()*2;
+    for (int i = 0; i < m_clouds.size(); ) {
+        if (m_clouds[i].wx < leftLimit) m_clouds.removeAt(i);
+        else ++i;
+    }
+}
+
+void IntroScreen::drawClouds(QPainter& p) {
+    int camGX = m_camX / PIXEL_SIZE;
+    int camGY = m_camY / PIXEL_SIZE;
+
+    auto hash2D = [](int x, int y)->quint32{
+        quint32 h = 120003212u;
+        h ^= quint32(x); h *= 16777619u;
+        h ^= quint32(y); h *= 16777619u;
+        return h;
+    };
+
+    for (const Cloud& cl : m_clouds) {
+        int baseGX = (cl.wx / PIXEL_SIZE) - camGX;
+        int baseGY = cl.wyCells + camGY;
+
+        for (int yy = 0; yy < cl.hCells; ++yy) {
+            for (int xx = 0; xx < cl.wCells; ++xx) {
+                double nx = ((xx + 0.5) - cl.wCells  / 2.0) / (cl.wCells  / 2.0);
+                double ny = ((yy + 0.5) - cl.hCells / 2.0) / (cl.hCells / 2.0);
+                double r2 = nx*nx + ny*ny;
+
+                quint32 h = hash2D(int(cl.seed) + xx, yy);
+                double fuzz = (h % 100) / 400.0;
+
+                if (r2 <= 1.0 + fuzz) {
+                    QColor cMain(255,255,255);
+                    QColor cSoft(230,230,240);
+                    QColor pix = ((h >> 3) & 1) ? cMain : cSoft;
+                    plotGridPixel(p, baseGX + xx, baseGY + yy, pix);
+                }
+            }
+        }
+    }
+}
+
+
 
 void IntroScreen::resizeEvent(QResizeEvent*) {
     m_camXFarthest = m_camX;
@@ -124,9 +178,6 @@ void IntroScreen::resizeEvent(QResizeEvent*) {
 
 int IntroScreen::textWidthCells(const QString& s, int scale) const {
     if (s.isEmpty()) return 0;
-
-    // width of N glyphs = (N-1)*CHAR_ADV*scale + 5*scale
-    // 5 = glyph width in cells, CHAR_ADV = per-letter advance
     return (int(s.size()) - 1) * CHAR_ADV * scale + 5 * scale;
 }
 
@@ -135,8 +186,7 @@ int IntroScreen::fitTextScaleToRect(int wCells, int hCells, const QString& s) co
     int padY = 2;
     int maxScale = 10;
 
-    int wcap = std::max(1,
-                        (wCells - padX) / std::max(1, textWidthCells(s, 1)));
+    int wcap = std::max(1, (wCells - padX) / std::max(1, textWidthCells(s, 1)));
     int hcap = std::max(1, (hCells - padY) / 7);
 
     int sc   = std::min(wcap, hcap);
@@ -186,7 +236,7 @@ void IntroScreen::paintEvent(QPaintEvent*) {
     p.setBrush(QColor(200,80,90));
     p.drawRect(rExit);
 
-    QString sStart = "START";
+    QString sStart = "PLAY";
     QString sExit  = "EXIT";
 
     int rStartWc = rStart.width()  / PIXEL_SIZE;
@@ -220,8 +270,7 @@ QRect IntroScreen::buttonRectStart() const {
     int hCells = std::max(10, gridH()/18);
     int gx = (gridW() - wCells) / 2;
     int gy = startTopCells(titleScale());
-    return QRect(gx*PIXEL_SIZE, gy*PIXEL_SIZE,
-                 wCells*PIXEL_SIZE, hCells*PIXEL_SIZE);
+    return QRect(gx*PIXEL_SIZE, gy*PIXEL_SIZE, wCells*PIXEL_SIZE, hCells*PIXEL_SIZE);
 }
 
 QRect IntroScreen::buttonRectExit() const {
@@ -229,14 +278,15 @@ QRect IntroScreen::buttonRectExit() const {
     int hCells = std::max(10, gridH()/18);
     int gx = (gridW() - wCells) / 2;
     int gy = exitTopCells(hCells);
-    return QRect(gx*PIXEL_SIZE, gy*PIXEL_SIZE,
-                 wCells*PIXEL_SIZE, hCells*PIXEL_SIZE);
+    return QRect(gx*PIXEL_SIZE, gy*PIXEL_SIZE, wCells*PIXEL_SIZE, hCells*PIXEL_SIZE);
 }
 
 void IntroScreen::drawBackground(QPainter& p) {
     p.fillRect(rect(), QColor(100,210,255));
+    drawClouds(p);
     drawFilledTerrain(p);
 }
+
 
 void IntroScreen::drawFilledTerrain(QPainter& p) {
     const int camGX = m_camX / PIXEL_SIZE;
@@ -259,8 +309,7 @@ void IntroScreen::drawFilledTerrain(QPainter& p) {
             plotGridPixel(p, sgx, sGY, shade);
         }
 
-        const QColor edge =
-            grassShadeForBlock(worldGX, groundWorldGY, true).darker(115);
+        const QColor edge = grassShadeForBlock(worldGX, groundWorldGY, true).darker(115);
         plotGridPixel(p, sgx, groundWorldGY + camGY, edge);
     }
 }
@@ -288,11 +337,7 @@ QColor IntroScreen::grassShadeForBlock(int worldGX, int worldGY, bool greenify) 
 
 void IntroScreen::plotGridPixel(QPainter& p, int gx, int gy, const QColor& c) {
     if (gx < 0 || gy < 0 || gx >= gridW()+1 || gy >= gridH()+1) return;
-    p.fillRect(gx * PIXEL_SIZE,
-               gy * PIXEL_SIZE,
-               PIXEL_SIZE,
-               PIXEL_SIZE,
-               c);
+    p.fillRect(gx * PIXEL_SIZE, gy * PIXEL_SIZE, PIXEL_SIZE, PIXEL_SIZE, c);
 }
 
 void IntroScreen::rasterizeSegmentToHeightMapWorld(int x1,int y1,int x2,int y2){
@@ -338,8 +383,7 @@ void IntroScreen::ensureAheadTerrain(int worldX) {
         m_slope += (0.5f - float(m_lastY) / std::max(1,height())) * m_difficulty;
         m_slope = std::clamp(m_slope, -1.0f, 1.0f);
 
-        const int newY = m_lastY
-                         + std::lround(m_slope * std::pow(std::abs(m_slope), 0.02f) * STEP);
+        const int newY = m_lastY + std::lround(m_slope * std::pow(std::abs(m_slope), 0.02f) * STEP);
 
         Line seg(m_lastX, m_lastY, m_lastX + STEP, newY);
         m_lines.append(seg);
@@ -358,13 +402,7 @@ void IntroScreen::ensureAheadTerrain(int worldX) {
     }
 }
 
-void IntroScreen::drawPixelText(QPainter& p,
-                                const QString& s,
-                                int gx,
-                                int gy,
-                                int scale,
-                                const QColor& c,
-                                bool bold)
+void IntroScreen::drawPixelText(QPainter& p, const QString& s, int gx, int gy, int scale, const QColor& c, bool bold)
 {
     auto plot = [&](int x,int y,const QColor& col){
         plotGridPixel(p, gx + x, gy + y, col);

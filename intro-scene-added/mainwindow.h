@@ -141,8 +141,8 @@ private:
     static constexpr int COIN_FLOOR_OFFSET_CELLS  = 6;
     static constexpr int COIN_GROUP_MIN           = 5;
     static constexpr int COIN_GROUP_MAX           = 16;
-    static constexpr int COIN_GROUP_STEP_MIN      = 6;
-    static constexpr int COIN_GROUP_STEP_MAX      = 9;
+    static constexpr int COIN_GROUP_STEP_MIN      = 9;
+    static constexpr int COIN_GROUP_STEP_MAX      = 13;
     static constexpr int COIN_SPAWN_MARGIN_CELLS  = 24;
     static constexpr int COIN_STREAM_LEN          = 10;
     static constexpr int COIN_STREAM_STEP_CELLS   = 7;
@@ -152,9 +152,9 @@ private:
     int  currentCoinSpacing();
     void maybePlaceCoinStreamAtEdge();
 
-    static constexpr int    NITRO_MAX_ALT_CELLS      = 128;
-    static constexpr double NITRO_THRUST             = 0.125;
-    static constexpr double NITRO_DURATION_SECOND    = 3.0;
+    static constexpr int NITRO_MAX_ALT_CELLS = 128;
+    static constexpr double NITRO_THRUST = 0.125;
+    static constexpr double NITRO_DURATION_SECOND = 3.0;
 
     double m_nitroEndTime        = 0.0;
     double m_nitroCooldownUntil  = 0.0;
