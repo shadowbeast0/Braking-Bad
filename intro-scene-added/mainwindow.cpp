@@ -184,9 +184,19 @@ void MainWindow::gameLoop() {
     for (Wheel* w : m_wheels) w->simulate(m_lines, accelDrive, brakeDrive, nitroDrive);
 
     if (m_nitro) {
+        double dirX = m_nitroDirX;
+        double dirY = m_nitroDirY;
+        bool flippedHoriz = false;
+        if (m_wheels.size() >= 2) {
+            const Wheel* back  = m_wheels.first();
+            const Wheel* front = m_wheels.last();
+            flippedHoriz = (back->x > front->x);
+        }
+        if (flippedHoriz) dirX = -dirX;
+
         for (Wheel* w : m_wheels) {
-            w->m_vx += NITRO_THRUST * m_nitroDirX;
-            w->m_vy += NITRO_THRUST * m_nitroDirY;
+            w->m_vx += NITRO_THRUST * dirX;
+            w->m_vy += NITRO_THRUST * dirY;
             if (w->y < m_nitroCeilY) {
                 w->y = m_nitroCeilY;
                 if (w->m_vy > 0.0) w->m_vy = 0.0;
@@ -361,11 +371,19 @@ void MainWindow::drawNitroFlame(QPainter& p) {
     QColor flameMid  (255,140,40);
     QColor flameCore (255,230,90);
 
-    for (int yy = -1; yy <= 1; ++yy) {
-        plotGridPixel(p, gcx-(gr+1), gcy+yy, flameMid);
-        plotGridPixel(p, gcx-(gr+2), gcy+yy, flameOuter);
+    bool flippedHoriz = false;
+    if (m_wheels.size() >= 2) {
+        const Wheel* back  = m_wheels.first();
+        const Wheel* front = m_wheels.last();
+        flippedHoriz = (back->x > front->x);
     }
-    plotGridPixel(p, gcx-(gr+3), gcy, flameCore);
+    int side = flippedHoriz ? +1 : -1;
+
+    for (int yy = -1; yy <= 1; ++yy) {
+        plotGridPixel(p, gcx + side*(gr+1), gcy+yy, flameMid);
+        plotGridPixel(p, gcx + side*(gr+2), gcy+yy, flameOuter);
+    }
+    plotGridPixel(p, gcx + side*(gr+3), gcy, flameCore);
 }
 
 void MainWindow::drawGridOverlay(QPainter& p) {
@@ -661,42 +679,29 @@ int MainWindow::currentCoinSpacing() {
 }
 
 void MainWindow::ensureAheadTerrain(int worldX) {
-    // Make sure we've generated terrain at least up to worldX.
-    // This is basically a stripped-down version of the terrain extension
-    // code you run each frame in gameLoop(), but without touching cameraXFarthest
-    // and without spawning coins recursively.
-
     while (m_lastX < worldX) {
-        // advance slope based on difficulty / randomness
         m_slope += (m_dist(m_rng) - static_cast<float>(m_lastY) / height()) * m_difficulty;
         m_slope = std::clamp(m_slope, -1.0f, 1.0f);
 
-        // pick newY for the next segment end
         const int newY =
             m_lastY +
             std::lround(m_slope * std::pow(std::abs(m_slope), m_irregularity) * m_step);
 
-        // append that segment to the world
         Line seg(m_lastX, m_lastY, m_lastX + m_step, newY);
         m_lines.append(seg);
         rasterizeSegmentToHeightMapWorld(seg.getX1(), m_lastY, seg.getX2(), newY);
 
-        // advance bookkeeping
         m_lastY = newY;
         m_lastX += m_step;
 
-        // world trimming like in gameLoop()
         if (m_lines.size() > (width() / m_step) * 3) {
             m_lines.removeFirst();
             pruneHeightMap();
         }
 
-        // difficulty ramps just like normal
         m_difficulty += m_difficultyIncrement;
 
-        // fuel cans can spawn ahead too (good for consistency)
         maybePlaceFuelAtEdge();
-        // DO NOT call maybePlaceCoinStreamAtEdge() here (would recurse)
         maybeSpawnCloud();
     }
 }
@@ -741,67 +746,46 @@ void MainWindow::maybeSpawnCloud() {
 
 
 void MainWindow::maybePlaceCoinStreamAtEdge() {
-    // 1. We want at least one stream every 5 seconds.
     if ((m_elapsedSeconds - m_lastCoinSpawnTimeSeconds) < 5.0) {
         return;
     }
 
-    // 2. Figure out where "offscreen to the right" starts.
     const int viewRightX = m_cameraX + width();
-    const int marginPx   = COIN_SPAWN_MARGIN_CELLS * PIXEL_SIZE; // safety gap
+    const int marginPx   = COIN_SPAWN_MARGIN_CELLS * PIXEL_SIZE;
     const int offRightX  = viewRightX + marginPx;
 
-    // 3. How wide could the *longest* possible stream be?
-    //    We use worst case: (COIN_GROUP_MAX-1) steps of COIN_GROUP_STEP_MAX each.
     const int maxStreamWidthPx =
         (COIN_GROUP_MAX - 1) * COIN_GROUP_STEP_MAX * PIXEL_SIZE;
 
-    // 4. Make sure terrain exists far enough ahead so we can hide
-    //    an ENTIRE future stream fully offscreen.
-    //    We generate up to offRightX + maxStreamWidthPx + a little buffer.
     ensureAheadTerrain(offRightX + maxStreamWidthPx + PIXEL_SIZE * 20);
 
-    // 5. Latest safe world X we can use (a bit before the terrain frontier).
     const int terrainLimitX = m_lastX - PIXEL_SIZE * 10;
     if (terrainLimitX <= offRightX) {
-        // Even after generating ahead, we still don't have enough
-        // room to place a whole stream entirely offscreen.
-        // Try again next frame.
         return;
     }
 
-    // 6. Randomize stream length [5..15] and per-coin horizontal step [6..9 cells].
     std::uniform_int_distribution<int> coinLenDist(COIN_GROUP_MIN, COIN_GROUP_MAX);
     const int groupN = coinLenDist(m_rng);
 
     std::uniform_int_distribution<int> stepDist(COIN_GROUP_STEP_MIN, COIN_GROUP_STEP_MAX);
     const int stepCells = stepDist(m_rng);
 
-    // width in pixels for this particular stream
     const int streamWidthPx = (groupN - 1) * stepCells * PIXEL_SIZE;
 
-    // 7. Decide where to place this stream:
-    //    Start at least offRightX (so it's fully offscreen),
-    //    end = start + streamWidthPx.
-    int startX = offRightX + PIXEL_SIZE * 2; // tiny pushed buffer
+    int startX = offRightX + PIXEL_SIZE * 2;
     int endX   = startX + streamWidthPx;
 
-    // If that end would go past the generated terrain limit,
-    // shift the whole stream left so it still fits on terrain.
     if (endX > terrainLimitX) {
         startX = terrainLimitX - streamWidthPx;
         endX   = terrainLimitX;
     }
 
-    // After shifting, if the start would now be visible, bail and wait;
-    // we refuse to "blink" coins into view.
     if (startX <= offRightX) {
         return;
     }
 
-    // 8. Vertical shape: gentle sine arc above the ground.
     const int ampCells = COIN_STREAM_AMP_CELLS;
-    const double phase = m_dist(m_rng) * 6.2831853; // random 0..2π
+    const double phase = m_dist(m_rng) * 6.2831853;
 
     for (int i = 0; i < groupN; ++i) {
         const int wx = startX + i * (stepCells * PIXEL_SIZE);
@@ -826,7 +810,6 @@ void MainWindow::maybePlaceCoinStreamAtEdge() {
         m_worldCoins.append(c);
     }
 
-    // 9. Bookkeeping so we enforce the 5s rule and also keep debug info.
     m_lastPlacedCoinX          = endX;
     m_lastCoinSpawnTimeSeconds = m_elapsedSeconds;
 }
@@ -988,7 +971,6 @@ double MainWindow::terrainTangentAngleAtX(double wx) const {
     int gyR = groundGyNearestGX(gx + 1);
 
     double dyCells = double(gyR - gyL);
-
 
     return std::atan2(-dyCells, 2.0);
 }
