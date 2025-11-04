@@ -14,6 +14,10 @@ void Wheel::attach(Wheel* other) {
     double dx = other->x - x;
     double dy = other->y - y;
     m_distances.append(std::sqrt(dx * dx + dy * dy));
+
+    // previous nitro impl marks the attached-from wheel as the root
+    m_isRoot = true;
+    other->m_isRoot = false;
 }
 
 void Wheel::kill(){
@@ -115,6 +119,71 @@ void Wheel::simulate(const QList<Line>& lines, bool accelerating, bool braking, 
                    - vNormalToLine * std::sin(theta);
             m_vy = vAlongLine    * std::sin(theta)
                    + vNormalToLine * std::cos(theta);
+
+            // collision bleeds some spin energy (from previous nitro code)
+            if (m_isRoot && m_others.size() > 0 && dist < std::max(1, m_radius)) {
+                m_omega *= 0.9;
+            }
+        }
+    }
+
+    // shared body tilt / rotation between two wheels (nitro-aware)
+    if (m_isRoot && m_others.size() > 0) {
+        Wheel* other = m_others.first();
+
+        // angular control:
+        // 1. nitro: mild damping of omega (straight flight)
+        // 2. both accel+brake: stabilizing tilt + gravity relief
+        // 3. accel only: tilt backward (wheelie)
+        // 4. brake only: tilt forward (nose down)
+        // 5. none: passive damping
+        if (nitro) {
+            m_omega *= 0.96;
+        } else if (accelerating && braking) {
+            m_omega *= 0.5;
+            const double RESTORING_FACTOR = 0.002;
+            m_omega -= RESTORING_FACTOR * m_angle;
+            // slight upward assist while stabilizing
+            m_vy -= Constants::GRAVITY / 1.5;
+        } else if (accelerating) {
+            m_omega -= ANGULAR_ACCELERATION;
+            if (m_omega < -MAX_ANGULAR_VELOCITY) m_omega = -MAX_ANGULAR_VELOCITY;
+        } else if (braking) {
+            m_omega += ANGULAR_DECELERATION;
+            if (m_omega >  MAX_ANGULAR_VELOCITY) m_omega =  MAX_ANGULAR_VELOCITY;
+        } else {
+            m_omega *= ANGULAR_DAMPING;
+            if (std::abs(m_omega) < 1e-4) m_omega = 0.0;
+        }
+
+        // integrate angle and wrap
+        m_angle += m_omega;
+        if (m_angle >  2 * M_PI) m_angle -= 2 * M_PI;
+        else if (m_angle < -2 * M_PI) m_angle += 2 * M_PI;
+
+        // apply incremental rotation of the wheel pair about COM
+        if (std::abs(m_omega) > 1e-6) {
+            double cx = (x + other->x) / 2.0;
+            double cy = (y + other->y) / 2.0;
+
+            double rx1 = x        - cx;
+            double ry1 = y        - cy;
+            double rx2 = other->x - cx;
+            double ry2 = other->y - cy;
+
+            double sinA = std::sin(m_omega);
+            double cosA = std::cos(m_omega);
+
+            double nx1 = rx1 * cosA - ry1 * sinA;
+            double ny1 = rx1 * sinA + ry1 * cosA;
+
+            double nx2 = rx2 * cosA - ry2 * sinA;
+            double ny2 = rx2 * sinA + ry2 * cosA;
+
+            x        = cx + nx1;
+            y        = cy + ny1;
+            other->x = cx + nx2;
+            other->y = cy + ny2;
         }
     }
 

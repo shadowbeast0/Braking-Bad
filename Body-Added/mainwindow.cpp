@@ -5,6 +5,9 @@
 #include <QFont>
 #include <cmath>
 #include <algorithm>
+#include <map>
+#include <list>
+#include <limits>
 
 MainWindow::MainWindow(QWidget *parent)
     : QWidget(parent),
@@ -160,41 +163,33 @@ void MainWindow::gameLoop() {
         m_lastX += m_step;
         if (m_lines.size() > (width() / m_step) * 3) { m_lines.removeFirst(); pruneHeightMap(); }
         m_difficulty += m_difficultyIncrement;
-        maybePlaceFuelAtEdge();
-        maybePlaceCoinStreamAtEdge();
+
+        m_fuelSys.maybePlaceFuelAtEdge(m_lastX, m_heightAtGX, m_difficulty, m_elapsedSeconds);
         maybeSpawnCloud();
     }
 
-    bool wantNitro = m_nitroKey;
-
-    if (!m_nitro) {
-        if (wantNitro && m_fuel > 0.0 && m_elapsedSeconds >= m_nitroCooldownUntil) {
-            m_nitro = true;
-            m_nitroEndTime = m_elapsedSeconds + NITRO_DURATION_SECOND;
-            const double launchAngle = terrainTangentAngleAtX(avgX) + M_PI/3.0;
-            m_nitroDirX = std::cos(launchAngle);
-            m_nitroDirY = std::sin(launchAngle);
-            int gx = int(avgX / PIXEL_SIZE);
-            int gyGround = groundGyNearestGX(gx);
-            m_nitroCeilY = (gyGround - NITRO_MAX_ALT_CELLS) * PIXEL_SIZE;
-        }
-    } else {
-        if (!wantNitro || m_fuel <= 0.0 || m_elapsedSeconds >= m_nitroEndTime) {
-            m_nitro = false;
-            m_nitroCooldownUntil = m_elapsedSeconds + 10.0;
-        }
+    {
+        const int viewRightX = m_cameraX + width();
+        const int marginPx   = Constants::COIN_SPAWN_MARGIN_CELLS * Constants::PIXEL_SIZE;
+        const int offRightX  = viewRightX + marginPx;
+        const int maxStreamWidthPx =
+            (Constants::COIN_GROUP_MAX - 1) * Constants::COIN_GROUP_STEP_MAX * Constants::PIXEL_SIZE;
+        ensureAheadTerrain(offRightX + maxStreamWidthPx + Constants::PIXEL_SIZE * 20);
     }
+    m_coinSys.maybePlaceCoinStreamAtEdge(
+        m_elapsedSeconds, m_cameraX, width(), m_heightAtGX, m_lastX, m_rng, m_dist);
+
+    m_nitroSys.update(
+        m_nitroKey, m_fuel, m_elapsedSeconds, avgX,
+        [this](int gx){ return this->groundGyNearestGX(gx); },
+        [this](double wx){ return this->terrainTangentAngleAtX(wx); }
+        );
 
     const bool allowInput = (m_fuel > 0.0);
+    bool accelDrive = false, brakeDrive = false, nitroDrive = false;
 
-    bool accelDrive = false;
-    bool brakeDrive = false;
-    bool nitroDrive = false;
-
-    if (m_nitro && allowInput) {
-        accelDrive = false;
-        brakeDrive = false;
-        nitroDrive = true;
+    if (m_nitroSys.active && allowInput) {
+        accelDrive = false; brakeDrive = false; nitroDrive = true;
     } else {
         nitroDrive = false;
         bool bothKeys = m_accelerating && m_braking;
@@ -205,39 +200,15 @@ void MainWindow::gameLoop() {
     }
 
     for (Wheel* w : m_wheels) w->simulate(m_lines, accelDrive, brakeDrive, nitroDrive);
+    for (CarBody* b : m_bodies) b->simulate(m_lines, accelDrive, brakeDrive);
 
-    for(CarBody* b : m_bodies) b->simulate(m_lines, accelDrive, brakeDrive);
-
-    if (m_nitro) {
-        double dirX = 1.0;
-        double dirY = 0.0;
-        if (m_wheels.size() >= 2) {
-            const Wheel* back  = m_wheels.first();
-            const Wheel* front = m_wheels[1];
-            const double dx   = (front->x - back->x);
-            const double dyUp = (back->y  - front->y);
-            const double len  = std::sqrt(dx*dx + dyUp*dyUp);
-            if (len > 1e-6) {
-                dirX = dx   / len;
-                dirY = dyUp / len;
-            }
-        }
-
-        for (Wheel* w : m_wheels) {
-            w->m_vx += NITRO_THRUST * dirX;
-            w->m_vy += NITRO_THRUST * dirY;
-            if (w->y < m_nitroCeilY) {
-                w->y = m_nitroCeilY;
-                if (w->m_vy > 0.0) w->m_vy = 0.0;
-            }
-        }
-    }
+    m_nitroSys.applyThrust(m_wheels);
 
     if (m_fuel > 0.0) {
-        double baseBurn = FUEL_BASE_BURN_PER_SEC * dt;
+        double baseBurn = Constants::FUEL_BASE_BURN_PER_SEC * dt;
         double extra = 0.0;
-        if (m_accelerating) extra = std::max(0.0, averageSpeed()) * FUEL_EXTRA_PER_SPEED * dt;
-        double burnMult = m_nitro ? 3.0 : 1.0;
+        if (m_accelerating) extra = std::max(0.0, averageSpeed()) * Constants::FUEL_EXTRA_PER_SPEED * dt;
+        double burnMult = m_nitroSys.active ? 3.0 : 1.0;
         m_fuel = std::max(0.0, m_fuel - burnMult * (baseBurn + extra));
     }
 
@@ -246,37 +217,8 @@ void MainWindow::gameLoop() {
         if (w->x < minX) { w->x = minX; w->m_vx = 0; }
     }
 
-    if (!m_wheels.isEmpty()) {
-        for (FuelCan& f : m_worldFuel) {
-            if (f.taken) continue;
-            const double fx = f.wx + 2 * PIXEL_SIZE;
-            const double fy = f.wy + 3 * PIXEL_SIZE;
-            double minD2 = 1e18;
-            for (const Wheel* w : m_wheels) {
-                const double dx = w->x - fx;
-                const double dy = w->y - fy;
-                const double d2 = dx*dx + dy*dy;
-                if (d2 < minD2) minD2 = d2;
-            }
-            const double R = FUEL_PICKUP_RADIUS + 20;
-            if (minD2 <= R*R) { f.taken = true; m_fuel = FUEL_MAX; }
-        }
-    }
-
-    if (!m_wheels.isEmpty()) {
-        for (Coin& c : m_worldCoins) {
-            if (c.taken) continue;
-            double minD2 = 1e18;
-            for (const Wheel* w : m_wheels) {
-                const double dx = w->x - c.cx;
-                const double dy = w->y - c.cy;
-                const double d2 = dx*dx + dy*dy;
-                if (d2 < minD2) minD2 = d2;
-            }
-            const double R = COIN_PICKUP_RADIUS;
-            if (minD2 <= R*R) { c.taken = true; ++m_coinCount; }
-        }
-    }
+    m_fuelSys.handlePickups(m_wheels, m_fuel);
+    m_coinSys.handlePickups(m_wheels, m_coinCount);
 
     update();
 }
@@ -292,10 +234,10 @@ void MainWindow::paintEvent(QPaintEvent *event) {
     p.setRenderHint(QPainter::Antialiasing, true);
     p.setPen(Qt::NoPen);
 
-    const int camGX = m_cameraX / PIXEL_SIZE;
-    const int camGY = m_cameraY / PIXEL_SIZE;
-    const int offX  = -(m_cameraX - camGX * PIXEL_SIZE);
-    const int offY  =  (m_cameraY - camGY * PIXEL_SIZE);
+    const int camGX = m_cameraX / Constants::PIXEL_SIZE;
+    const int camGY = m_cameraY / Constants::PIXEL_SIZE;
+    const int offX  = -(m_cameraX - camGX * Constants::PIXEL_SIZE);
+    const int offY  =  (m_cameraY - camGY * Constants::PIXEL_SIZE);
 
     p.save();
     p.translate(offX, offY);
@@ -303,9 +245,9 @@ void MainWindow::paintEvent(QPaintEvent *event) {
     if (m_showGrid) { drawGridOverlay(p); }
     drawClouds(p);
     drawFilledTerrain(p);
-    drawWorldFuel(p);
-    drawWorldCoins(p);
-    drawNitroFlame(p);
+    m_fuelSys.drawWorldFuel(p, m_cameraX, m_cameraY);
+    m_coinSys.drawWorldCoins(p, m_cameraX, m_cameraY, gridW(), gridH());
+    m_nitroSys.drawFlame(p, m_wheels, m_cameraX, m_cameraY, width(), height());
 
     const QColor wheelColor(40, 50, 60);
     for (const Wheel* wheel : m_wheels) {
@@ -314,19 +256,20 @@ void MainWindow::paintEvent(QPaintEvent *event) {
             const int cy = (*info)[1];
             const int r  = (*info)[2];
             if(r == 0) continue;
-            const int gcx = cx / PIXEL_SIZE;
-            const int gcy = cy / PIXEL_SIZE;
-            const int gr  = r  / PIXEL_SIZE;
+            const int gcx = cx / Constants::PIXEL_SIZE;
+            const int gcy = cy / Constants::PIXEL_SIZE;
+            const int gr  = r  / Constants::PIXEL_SIZE;
             drawCircleFilledMidpointGrid(p, gcx, gcy, gr, wheelColor);
         }
     }
 
     const QColor carColor(200, 50, 50);
     for(CarBody* body : m_bodies){
-        auto points = body->get(-m_cameraX, m_cameraY);
+        auto pts = body->get(-m_cameraX, m_cameraY);
         QVector<QPoint> normalisedPoints;
-        for(auto p : points){
-            normalisedPoints.append(QPoint(p.x() / PIXEL_SIZE, p.y() / PIXEL_SIZE));
+        normalisedPoints.reserve(pts.size());
+        for(auto p2 : pts){
+            normalisedPoints.append(QPoint(p2.x() / Constants::PIXEL_SIZE, p2.y() / Constants::PIXEL_SIZE));
         }
         fillPolygon(p, normalisedPoints, carColor);
     }
@@ -335,7 +278,7 @@ void MainWindow::paintEvent(QPaintEvent *event) {
 
     drawHUDFuel(p);
     drawHUDCoins(p);
-    drawHUDNitro(p);
+    m_nitroSys.drawHUD(p, m_elapsedSeconds);
 }
 
 void MainWindow::updateCamera(double tx, double ty, double dt) {
@@ -349,208 +292,6 @@ void MainWindow::updateCamera(double tx, double ty, double dt) {
     m_camY  += m_camVY * dt;
 }
 
-
-struct EdgeEntry {
-    int y_max;
-    double x_at_min;
-    double inv_slope;
-
-    EdgeEntry(int ymax, double x_min, double inv_s)
-        : y_max(ymax), x_at_min(x_min), inv_slope(inv_s) {}
-};
-
-struct ActiveEdge {
-    int y_max;
-    double x_curr;
-    double inv_slope;
-
-    ActiveEdge(const EdgeEntry& e)
-        : y_max(e.y_max), x_curr(e.x_at_min), inv_slope(e.inv_slope) {}
-
-    bool operator<(const ActiveEdge& other) const {
-        return x_curr < other.x_curr;
-    }
-};
-
-/**
- * @brief Fills a polygon on a raster grid using the Scan-Line Algorithm.
- * @param p       The QPainter (passed to plotGridPixel).
- * @param points  The vertices of the polygon.
- * @param c       The fill color.
- */
-void MainWindow::fillPolygon(QPainter& p, QVector<QPoint> points, const QColor& c)
-{
-    if (points.size() < 3) {
-        return;
-    }
-
-    std::map<int, std::list<EdgeEntry>> edgeTable;
-    int global_y_min = std::numeric_limits<int>::max();
-    int global_y_max = std::numeric_limits<int>::min();
-
-    for (int i = 0; i < points.size(); ++i) {
-        const QPoint& p1 = points[i];
-        const QPoint& p2 = points[(i + 1) % points.size()];
-
-        global_y_min = std::min({global_y_min, p1.y(), p2.y()});
-        global_y_max = std::max({global_y_max, p1.y(), p2.y()});
-
-        const QPoint *v1 = &p1, *v2 = &p2;
-        if (v1->y() > v2->y()) {
-            std::swap(v1, v2);
-        }
-
-        if (v1->y() == v2->y()) {
-            continue;
-        }
-
-        double invSlope = static_cast<double>(v2->x() - v1->x()) / (v2->y() - v1->y());
-
-        edgeTable[v1->y()].emplace_back(v2->y(), v1->x(), invSlope);
-    }
-
-    std::list<ActiveEdge> activeEdgeTable;
-
-    for (int y = global_y_min; y < global_y_max; ++y) {
-
-        if (edgeTable.count(y)) {
-            for (const auto& edge : edgeTable[y]) {
-                activeEdgeTable.emplace_back(edge);
-            }
-        }
-
-        activeEdgeTable.remove_if([y](const ActiveEdge& e) {
-            return e.y_max == y;
-        });
-
-        activeEdgeTable.sort();
-
-        for (auto it = activeEdgeTable.begin(); it != activeEdgeTable.end(); it++) {
-            auto it_next = std::next(it);
-            if (it_next == activeEdgeTable.end()) {
-                break;
-            }
-
-            int x_start = static_cast<int>(std::ceil(it->x_curr));
-            int x_end = static_cast<int>(std::floor(it_next->x_curr));
-
-            for (int x = x_start; x <= x_end; ++x) {
-                plotGridPixel(p, x, y, c);
-            }
-
-            ++it;
-        }
-
-        for (auto& edge : activeEdgeTable) {
-            edge.x_curr += edge.inv_slope;
-        }
-    }
-}
-
-
-void MainWindow::drawFilledTerrain(QPainter& p) {
-    const int camGX = m_cameraX / PIXEL_SIZE;
-    const int camGY = m_cameraY / PIXEL_SIZE;
-
-    for (int sgx = 0; sgx <= gridW(); ++sgx) {
-        const int worldGX = sgx + camGX;
-        auto it = m_heightAtGX.constFind(worldGX);
-        if (it == m_heightAtGX.constEnd()) continue;
-
-        const int groundWorldGY = it.value();
-        int startScreenGY = groundWorldGY + camGY;
-        if (startScreenGY < 0) startScreenGY = 0;
-        if (startScreenGY >= gridH()) continue;
-
-        for (int sGY = startScreenGY; sGY <= gridH(); ++sGY) {
-            const int worldGY = sGY - camGY;
-            bool topZone = (sGY < groundWorldGY + camGY + 3*SHADING_BLOCK);
-            const QColor shade = grassShadeForBlock(worldGX, worldGY, topZone);
-            plotGridPixel(p, sgx, sGY, shade);
-        }
-
-        const QColor edge =
-            grassShadeForBlock(worldGX, groundWorldGY, true).darker(115);
-        plotGridPixel(p, sgx, groundWorldGY + camGY, edge);
-    }
-}
-
-QColor MainWindow::grassShadeForBlock(int worldGX, int worldGY, bool greenify) const {
-    const int bx = worldGX / SHADING_BLOCK;
-    const int by = worldGY / SHADING_BLOCK;
-    const quint32 h = hash2D(bx, by);
-
-    if (greenify) {
-        const int idxG = int(h % m_grassPalette.size());
-        return m_grassPalette[idxG];
-    } else {
-        const int idxD = int(h % m_dirtPalette.size());
-        return m_dirtPalette[idxD];
-    }
-}
-
-void MainWindow::drawNitroFlame(QPainter& p) {
-    if (!m_nitro) return;
-    if (m_wheels.isEmpty()) return;
-
-    const Wheel* back = m_wheels.first();
-    auto info = back->get(0, 0, width(), height(), -m_cameraX, m_cameraY);
-    if (!info) return;
-
-    int cx = (*info)[0];
-    int cy = (*info)[1];
-    int r  = (*info)[2];
-
-    int gcx = cx / PIXEL_SIZE;
-    int gcy = cy / PIXEL_SIZE;
-    int gr  = std::max(1, r / PIXEL_SIZE);
-
-    double dirX = 1.0;
-    double dirY = 0.0;
-    if (m_wheels.size() >= 2) {
-        const Wheel* front = m_wheels[1];
-        const double dx   = (front->x - back->x);
-        const double dyUp = (back->y  - front->y);
-        const double len  = std::sqrt(dx*dx + dyUp*dyUp);
-        if (len > 1e-6) {
-            dirX = dx   / len;
-            dirY = dyUp / len;
-        }
-    }
-
-    double nUpX = -dirY;
-    double nUpY =  dirX;
-
-    int nozzleGX = gcx + int(std::round(nUpX * (gr + 1)));
-    int nozzleGY = gcy - int(std::round(nUpY * (gr + 1)));
-
-    QColor flameOuter(255,80,30);
-    QColor flameMid  (255,140,40);
-    QColor flameCore (255,230,90);
-    QColor nozzle    (60, 60, 70);
-
-    plotGridPixel(p, nozzleGX, nozzleGY, nozzle);
-
-    double fx = nozzleGX;
-    double fy = nozzleGY;
-
-    double vx = -dirX;
-    double vy =  dirY;
-
-    int segments = 4;
-    for (int i = 1; i <= segments; ++i) {
-        int gx = int(std::round(fx + vx * i));
-        int gy = int(std::round(fy - vy * i));
-        if (i == segments) {
-            plotGridPixel(p, gx, gy, flameCore);
-        } else if (i == segments - 1) {
-            plotGridPixel(p, gx, gy, flameMid);
-        } else {
-            plotGridPixel(p, gx, gy, flameOuter);
-        }
-    }
-}
-
 void MainWindow::drawGridOverlay(QPainter& p) {
     p.save();
     QPen pen(QColor(140,140,140));
@@ -558,10 +299,10 @@ void MainWindow::drawGridOverlay(QPainter& p) {
     p.setPen(pen);
     p.setBrush(Qt::NoBrush);
 
-    for (int x = 0; x <= width(); x += PIXEL_SIZE) {
+    for (int x = 0; x <= width(); x += Constants::PIXEL_SIZE) {
         p.drawLine(x, 0, x, height());
     }
-    for (int y = 0; y <= height(); y += PIXEL_SIZE) {
+    for (int y = 0; y <= height(); y += Constants::PIXEL_SIZE) {
         p.drawLine(0, y, width(), y);
     }
     p.restore();
@@ -572,7 +313,7 @@ void MainWindow::plotGridPixel(QPainter& p, int gx, int gy, const QColor& c) {
         gx >= gridW() + 1 ||
         gy >= gridH() + 1) return;
 
-    p.fillRect(gx * PIXEL_SIZE, gy * PIXEL_SIZE, PIXEL_SIZE, PIXEL_SIZE, c);
+    p.fillRect(gx * Constants::PIXEL_SIZE, gy * Constants::PIXEL_SIZE, Constants::PIXEL_SIZE, Constants::PIXEL_SIZE, c);
 }
 
 void MainWindow::drawCircleFilledMidpointGrid(QPainter& p, int gcx, int gcy, int gr, const QColor& c)
@@ -603,14 +344,96 @@ void MainWindow::drawCircleFilledMidpointGrid(QPainter& p, int gcx, int gcy, int
     }
 }
 
+void MainWindow::fillPolygon(QPainter& p, QVector<QPoint> points, const QColor& c)
+{
+    if (points.size() < 3) {
+        return;
+    }
+
+    struct EdgeEntry {
+        int y_max;
+        double x_at_min;
+        double inv_slope;
+        EdgeEntry(int ymax, double x_min, double inv_s) : y_max(ymax), x_at_min(x_min), inv_slope(inv_s) {}
+    };
+    struct ActiveEdge {
+        int y_max;
+        double x_curr;
+        double inv_slope;
+        ActiveEdge(const EdgeEntry& e) : y_max(e.y_max), x_curr(e.x_at_min), inv_slope(e.inv_slope) {}
+        bool operator<(const ActiveEdge& other) const { return x_curr < other.x_curr; }
+    };
+
+    std::map<int, std::list<EdgeEntry>> edgeTable;
+    int global_y_min = std::numeric_limits<int>::max();
+    int global_y_max = std::numeric_limits<int>::min();
+
+    for (int i = 0; i < points.size(); ++i) {
+        const QPoint& p1 = points[i];
+        const QPoint& p2 = points[(i + 1) % points.size()];
+
+        global_y_min = std::min({global_y_min, p1.y(), p2.y()});
+        global_y_max = std::max({global_y_max, p1.y(), p2.y()});
+
+        const QPoint *v1 = &p1, *v2 = &p2;
+        if (v1->y() > v2->y()) {
+            std::swap(v1, v2);
+        }
+
+        if (v1->y() == v2->y()) {
+            continue;
+        }
+
+        double invSlope = static_cast<double>(v2->x() - v1->x()) / (v2->y() - v1->y());
+        edgeTable[v1->y()].emplace_back(v2->y(), v1->x(), invSlope);
+    }
+
+    std::list<ActiveEdge> activeEdgeTable;
+
+    for (int y = global_y_min; y < global_y_max; ++y) {
+
+        if (edgeTable.count(y)) {
+            for (const auto& edge : edgeTable[y]) {
+                activeEdgeTable.emplace_back(edge);
+            }
+        }
+
+        activeEdgeTable.remove_if([y](const ActiveEdge& e) {
+            return e.y_max == y;
+        });
+
+        activeEdgeTable.sort();
+
+        for (auto it = activeEdgeTable.begin(); it != activeEdgeTable.end(); it++) {
+            auto it_next = std::next(it);
+            if (it_next == activeEdgeTable.end()) {
+                break;
+            }
+
+            int x_start = static_cast<int>(std::ceil(it->x_curr));
+            int x_end = static_cast<int>(std::floor(it_next->x_curr));
+
+            for (int xg = x_start; xg <= x_end; ++xg) {
+                plotGridPixel(p, xg, y, c);
+            }
+
+            ++it;
+        }
+
+        for (auto& edge : activeEdgeTable) {
+            edge.x_curr += edge.inv_slope;
+        }
+    }
+}
+
 void MainWindow::rasterizeSegmentToHeightMapWorld(int x1,int y1,int x2,int y2){
     if (x2 < x1) { std::swap(x1,x2); std::swap(y1,y2); }
 
-    const int gx1 = x1 / PIXEL_SIZE;
-    const int gx2 = x2 / PIXEL_SIZE;
+    const int gx1 = x1 / Constants::PIXEL_SIZE;
+    const int gx2 = x2 / Constants::PIXEL_SIZE;
 
     if (x2 == x1) {
-        const int gy = static_cast<int>(std::floor(y1 / double(PIXEL_SIZE) + 0.5));
+        const int gy = static_cast<int>(std::floor(y1 / double(Constants::PIXEL_SIZE) + 0.5));
         m_heightAtGX.insert(gx1, gy);
         return;
     }
@@ -619,12 +442,12 @@ void MainWindow::rasterizeSegmentToHeightMapWorld(int x1,int y1,int x2,int y2){
     const double dy = double(y2 - y1);
 
     for (int gx = gx1; gx <= gx2; ++gx) {
-        const double wx = gx * double(PIXEL_SIZE);
+        const double wx = gx * double(Constants::PIXEL_SIZE);
         double t = (wx - x1) / dx;
         t = std::clamp(t, 0.0, 1.0);
 
         const double wy = y1 + t * dy;
-        const int gy = static_cast<int>(std::floor(wy / double(PIXEL_SIZE) + 0.5));
+        const int gy = static_cast<int>(std::floor(wy / double(Constants::PIXEL_SIZE) + 0.5));
 
         m_heightAtGX.insert(gx, gy);
     }
@@ -633,7 +456,7 @@ void MainWindow::rasterizeSegmentToHeightMapWorld(int x1,int y1,int x2,int y2){
 void MainWindow::pruneHeightMap() {
     if (m_lines.isEmpty()) return;
 
-    const int keepFromGX = (m_lines.first().getX1() / PIXEL_SIZE) - 4;
+    const int keepFromGX = (m_lines.first().getX1() / Constants::PIXEL_SIZE) - 4;
     QList<int> toRemove;
     toRemove.reserve(m_heightAtGX.size());
 
@@ -706,81 +529,13 @@ void MainWindow::keyReleaseEvent(QKeyEvent *event) {
     }
 }
 
-int MainWindow::currentFuelSpacing() {
-    int base    = 700;
-    int byDiff  = int(500 * (m_difficulty / 0.005));
-    int byTime  = int(35 * m_elapsedSeconds);
-    int spacing = base + byDiff + byTime;
-    spacing     = int(std::round(spacing * FUEL_SPAWN_EASE));
-
-    int minSpacing = int(std::round(450 * FUEL_SPAWN_EASE));
-    if (spacing < minSpacing) spacing = minSpacing;
-
-    return spacing;
-}
-
-void MainWindow::maybePlaceFuelAtEdge() {
-    if (m_lastX - m_lastPlacedFuelX < currentFuelSpacing()) return;
-
-    int gx = m_lastX / PIXEL_SIZE;
-    auto it = m_heightAtGX.constFind(gx);
-    if (it == m_heightAtGX.constEnd()) return;
-
-    const int gyGround = it.value();
-
-    FuelCan f;
-    f.wx = m_lastX;
-    f.wy = (gyGround - FUEL_FLOOR_OFFSET_CELLS) * PIXEL_SIZE;
-    f.taken = false;
-    m_worldFuel.append(f);
-
-    m_lastPlacedFuelX = m_lastX;
-}
-
-void MainWindow::drawWorldFuel(QPainter& p) {
-    const int camGX = m_cameraX / PIXEL_SIZE;
-    const int camGY = m_cameraY / PIXEL_SIZE;
-
-    QColor body(230, 60, 60);
-    QColor cap(230,230,230);
-    QColor label(255,200,50);
-    QColor shadow(0,0,0,90);
-
-    for (const FuelCan& f : m_worldFuel) {
-        if (f.taken) continue;
-
-        int sx = (f.wx / PIXEL_SIZE) - camGX;
-        int sy = (f.wy / PIXEL_SIZE) + camGY;
-
-        auto px = [&](int gx, int gy, const QColor& c){
-            plotGridPixel(p, sx+gx, sy+gy, c);
-        };
-
-        px(2,1,shadow);
-        px(5,2,shadow);
-
-        px(1,0,cap);
-        px(2,0,cap);
-
-        for (int y=1; y<=5; ++y) {
-            for (int x=0; x<=4; ++x) {
-                px(x,y,body);
-            }
-        }
-
-        for (int x=1; x<=3; ++x) {
-            px(x,3,label);
-        }
-    }
-}
-
 void MainWindow::drawHUDFuel(QPainter& p) {
-    int gy = HUD_TOP_MARGIN;
+    int gy = Constants::HUD_TOP_MARGIN;
     int wcells = std::min(std::max(gridW()/4, 24), 48);
     int gx = (gridW() - wcells)/2;
     int barH = 3;
 
-    double frac = std::clamp(m_fuel / FUEL_MAX, 0.0, 1.0);
+    double frac = std::clamp(m_fuel / Constants::FUEL_MAX, 0.0, 1.0);
     int filled = int(std::floor(wcells * frac));
 
     auto lerp = [](const QColor& c1, const QColor& c2, double t)->QColor {
@@ -794,13 +549,11 @@ void MainWindow::drawHUDFuel(QPainter& p) {
     QColor midC  (250,230,80);
     QColor endC  (230,50,40);
 
-
     for (int x=0; x<wcells; ++x) {
         for (int y=0; y<barH; ++y) {
             plotGridPixel(p, gx+x, gy+y, QColor(20,14,24));
         }
     }
-
 
     for (int x=0; x<filled; ++x) {
         double t = double(x)/std::max(wcells-1,1);
@@ -813,7 +566,6 @@ void MainWindow::drawHUDFuel(QPainter& p) {
         }
     }
 
-
     for (int y=0; y<barH; ++y) {
         plotGridPixel(p,gx-1,      gy+y,QColor(35,35,48));
         plotGridPixel(p,gx+wcells, gy+y,QColor(35,35,48));
@@ -822,7 +574,6 @@ void MainWindow::drawHUDFuel(QPainter& p) {
         plotGridPixel(p,gx+x,gy-1,      QColor(35,35,48));
         plotGridPixel(p,gx+x,gy+barH,   QColor(35,35,48));
     }
-
 
     int tickEvery = std::max(6, wcells/6);
     for (int x=tickEvery; x<wcells; x+=tickEvery) {
@@ -837,10 +588,6 @@ double MainWindow::averageSpeed() const {
         s += std::sqrt(w->m_vx*w->m_vx + w->m_vy*w->m_vy);
     }
     return s / m_wheels.size();
-}
-
-int MainWindow::currentCoinSpacing() {
-    return COIN_STREAM_SPACING_PX;
 }
 
 void MainWindow::ensureAheadTerrain(int worldX) {
@@ -866,27 +613,28 @@ void MainWindow::ensureAheadTerrain(int worldX) {
 
         m_difficulty += m_difficultyIncrement;
 
-        maybePlaceFuelAtEdge();
+        m_fuelSys.maybePlaceFuelAtEdge(m_lastX, m_heightAtGX, m_difficulty, m_elapsedSeconds);
         maybeSpawnCloud();
     }
 }
+
 void MainWindow::maybeSpawnCloud() {
-    if (m_lastX - m_lastCloudSpawnX < CLOUD_SPACING_PX) return;
+    if (m_lastX - m_lastCloudSpawnX < Constants::CLOUD_SPACING_PX) return;
     if(rand() < 0.5) return;
 
-    int gx = m_lastX / PIXEL_SIZE;
+    int gx = m_lastX / Constants::PIXEL_SIZE;
     auto it = m_heightAtGX.constFind(gx);
     if (it == m_heightAtGX.constEnd()) return;
 
     int gyGround = it.value();
 
-    std::uniform_int_distribution<int> wdist(CLOUD_MIN_W_CELLS, CLOUD_MAX_W_CELLS);
-    std::uniform_int_distribution<int> hdist(CLOUD_MIN_H_CELLS, CLOUD_MAX_H_CELLS);
+    std::uniform_int_distribution<int> wdist(Constants::CLOUD_MIN_W_CELLS, Constants::CLOUD_MAX_W_CELLS);
+    std::uniform_int_distribution<int> hdist(Constants::CLOUD_MIN_H_CELLS, Constants::CLOUD_MAX_H_CELLS);
 
     int wCells = wdist(m_rng);
     int hCells = hdist(m_rng);
 
-    int skyLift = CLOUD_SKY_OFFSET_CELLS + int(m_dist(m_rng) * 200);
+    int skyLift = Constants::CLOUD_SKY_OFFSET_CELLS + int(m_dist(m_rng) * 200);
     int cloudTopCells = gyGround - skyLift;
 
     Cloud cl;
@@ -909,83 +657,19 @@ void MainWindow::maybeSpawnCloud() {
     }
 }
 
-
-void MainWindow::maybePlaceCoinStreamAtEdge() {
-    if ((m_elapsedSeconds - m_lastCoinSpawnTimeSeconds) < 5.0) {
-        return;
-    }
-
-    const int viewRightX = m_cameraX + width();
-    const int marginPx   = COIN_SPAWN_MARGIN_CELLS * PIXEL_SIZE;
-    const int offRightX  = viewRightX + marginPx;
-
-    const int maxStreamWidthPx =
-        (COIN_GROUP_MAX - 1) * COIN_GROUP_STEP_MAX * PIXEL_SIZE;
-
-    ensureAheadTerrain(offRightX + maxStreamWidthPx + PIXEL_SIZE * 20);
-
-    const int terrainLimitX = m_lastX - PIXEL_SIZE * 10;
-    if (terrainLimitX <= offRightX) {
-        return;
-    }
-
-    std::uniform_int_distribution<int> coinLenDist(COIN_GROUP_MIN, COIN_GROUP_MAX);
-    const int groupN = coinLenDist(m_rng);
-
-    std::uniform_int_distribution<int> stepDist(COIN_GROUP_STEP_MIN, COIN_GROUP_STEP_MAX);
-    const int stepCells = stepDist(m_rng);
-
-    const int streamWidthPx = (groupN - 1) * stepCells * PIXEL_SIZE;
-
-    int startX = offRightX + PIXEL_SIZE * 2;
-    int endX   = startX + streamWidthPx;
-
-    if (endX > terrainLimitX) {
-        startX = terrainLimitX - streamWidthPx;
-        endX   = terrainLimitX;
-    }
-
-    if (startX <= offRightX) {
-        return;
-    }
-
-    const int ampCells = COIN_STREAM_AMP_CELLS;
-    const double phase = m_dist(m_rng) * 6.2831853;
-
-    for (int i = 0; i < groupN; ++i) {
-        const int wx = startX + i * (stepCells * PIXEL_SIZE);
-        const int gx = wx / PIXEL_SIZE;
-
-        auto it = m_heightAtGX.constFind(gx);
-        if (it == m_heightAtGX.constEnd()) {
-            continue;
-        }
-
-        const int gyGround = it.value();
-
-        const int arcOffsetCells =
-            int(std::lround(std::sin(phase + i * 0.55) * ampCells));
-
-        const int gy = gyGround - COIN_FLOOR_OFFSET_CELLS - arcOffsetCells;
-
-        Coin c;
-        c.cx = wx;
-        c.cy = gy * PIXEL_SIZE;
-        c.taken = false;
-        m_worldCoins.append(c);
-    }
-
-    m_lastPlacedCoinX          = endX;
-    m_lastCoinSpawnTimeSeconds = m_elapsedSeconds;
-}
-
-
 void MainWindow::drawClouds(QPainter& p) {
-    int camGX = m_cameraX / PIXEL_SIZE;
-    int camGY = m_cameraY / PIXEL_SIZE;
+    int camGX = m_cameraX / Constants::PIXEL_SIZE;
+    int camGY = m_cameraY / Constants::PIXEL_SIZE;
+
+    auto plotGridPixelLocal = [&](int gx, int gy, const QColor& c) {
+        p.fillRect(gx * Constants::PIXEL_SIZE,
+                   gy * Constants::PIXEL_SIZE,
+                   Constants::PIXEL_SIZE,
+                   Constants::PIXEL_SIZE, c);
+    };
 
     for (const Cloud& cl : m_clouds) {
-        int baseGX = (cl.wx / PIXEL_SIZE) - camGX;
+        int baseGX = (cl.wx / Constants::PIXEL_SIZE) - camGX;
         int baseGY = cl.wyCells + camGY;
 
         for (int yy = 0; yy < cl.hCells; ++yy) {
@@ -1001,112 +685,69 @@ void MainWindow::drawClouds(QPainter& p) {
                     QColor cMain(255,255,255);
                     QColor cSoft(230,230,240);
                     QColor pix = ((h >> 3) & 1) ? cMain : cSoft;
-                    plotGridPixel(p, baseGX + xx, baseGY + yy, pix);
+                    plotGridPixelLocal(baseGX + xx, baseGY + yy, pix);
                 }
             }
         }
     }
 }
 
-void MainWindow::drawWorldCoins(QPainter& p) {
-    const int camGX = m_cameraX / PIXEL_SIZE;
-    const int camGY = m_cameraY / PIXEL_SIZE;
+void MainWindow::drawFilledTerrain(QPainter& p) {
+    const int camGX = m_cameraX / Constants::PIXEL_SIZE;
+    const int camGY = m_cameraY / Constants::PIXEL_SIZE;
 
-    QColor rim  (195,140,40);
-    QColor fill (250,204,77);
-    QColor fill2(245,184,50);
-    QColor shine(255,255,220);
+    for (int sgx = 0; sgx <= gridW(); ++sgx) {
+        const int worldGX = sgx + camGX;
+        auto it = m_heightAtGX.constFind(worldGX);
+        if (it == m_heightAtGX.constEnd()) continue;
 
-    for (const Coin& c : m_worldCoins) {
-        if (c.taken) continue;
+        const int groundWorldGY = it.value();
+        int startScreenGY = groundWorldGY + camGY;
+        if (startScreenGY < 0) startScreenGY = 0;
+        if (startScreenGY >= gridH()) continue;
 
-        int scx = (c.cx / PIXEL_SIZE) - camGX;
-        int scy = (c.cy / PIXEL_SIZE) + camGY;
-        int r   = COIN_RADIUS_CELLS;
-
-        drawCircleFilledMidpointGrid(p, scx, scy, r, rim);
-        if (r-1 > 0) {
-            drawCircleFilledMidpointGrid(p, scx, scy, r-1, fill);
-        }
-        if (r-2 > 0) {
-            drawCircleFilledMidpointGrid(p, scx, scy, r-2, fill2);
+        for (int sGY = startScreenGY; sGY <= gridH(); ++sGY) {
+            const int worldGY = sGY - camGY;
+            bool topZone = (sGY < groundWorldGY + camGY + 3*Constants::SHADING_BLOCK);
+            const QColor shade = grassShadeForBlock(worldGX, worldGY, topZone);
+            plotGridPixel(p, sgx, sGY, shade);
         }
 
-        plotGridPixel(p, scx-1, scy-r+1, shine);
-        plotGridPixel(p, scx,   scy-r+1, shine);
+        const QColor edge =
+            grassShadeForBlock(worldGX, groundWorldGY, true).darker(115);
+        plotGridPixel(p, sgx, groundWorldGY + camGY, edge);
+    }
+}
+
+QColor MainWindow::grassShadeForBlock(int worldGX, int worldGY, bool greenify) const {
+    const int bx = worldGX / Constants::SHADING_BLOCK;
+    const int by = worldGY / Constants::SHADING_BLOCK;
+    const quint32 h = hash2D(bx, by);
+
+    if (greenify) {
+        const int idxG = int(h % m_grassPalette.size());
+        return m_grassPalette[idxG];
+    } else {
+        const int idxD = int(h % m_dirtPalette.size());
+        return m_dirtPalette[idxD];
     }
 }
 
 void MainWindow::drawHUDCoins(QPainter& p) {
-    int iconGX = HUD_LEFT_MARGIN + COIN_RADIUS_CELLS + 1;
-    int iconGY = HUD_TOP_MARGIN  + COIN_RADIUS_CELLS;
-
-    drawCircleFilledMidpointGrid(
-        p, iconGX, iconGY, COIN_RADIUS_CELLS,
-        QColor(195,140,40)
-        );
-    drawCircleFilledMidpointGrid(
-        p, iconGX, iconGY, std::max(1, COIN_RADIUS_CELLS-1),
-        QColor(250,204,77)
-        );
-
-    plotGridPixel(p,
-                  iconGX-1,
-                  iconGY-COIN_RADIUS_CELLS+1,
-                  QColor(255,255,220));
-
+    int iconGX = Constants::HUD_LEFT_MARGIN + Constants::COIN_RADIUS_CELLS + 1;
+    int iconGY = Constants::HUD_TOP_MARGIN  + Constants::COIN_RADIUS_CELLS;
+    drawCircleFilledMidpointGrid(p, iconGX, iconGY, Constants::COIN_RADIUS_CELLS, QColor(195,140,40));
+    drawCircleFilledMidpointGrid(p, iconGX, iconGY, std::max(1, Constants::COIN_RADIUS_CELLS-1), QColor(250,204,77));
+    plotGridPixel(p, iconGX-1, iconGY-Constants::COIN_RADIUS_CELLS+1, QColor(255,255,220));
     QFont f;
     f.setFamily("Monospace");
     f.setBold(true);
     f.setPointSize(12);
     p.setFont(f);
     p.setPen(QColor(20,14,24));
-
-    int px = (HUD_LEFT_MARGIN + COIN_RADIUS_CELLS*2 + 3) * PIXEL_SIZE;
-    int py = (HUD_TOP_MARGIN  + COIN_RADIUS_CELLS + 2) * PIXEL_SIZE;
-
+    int px = (Constants::HUD_LEFT_MARGIN + Constants::COIN_RADIUS_CELLS*2 + 3) * Constants::PIXEL_SIZE;
+    int py = (Constants::HUD_TOP_MARGIN  + Constants::COIN_RADIUS_CELLS + 2) * Constants::PIXEL_SIZE;
     p.drawText(px, py, QString::number(m_coinCount));
-}
-
-void MainWindow::drawHUDNitro(QPainter& p) {
-    int baseGX = HUD_LEFT_MARGIN;
-    int baseGY = HUD_TOP_MARGIN + COIN_RADIUS_CELLS*2 + 4;
-
-    QColor hull    (90,90,110);
-    QColor tip     (180,180,190);
-    QColor windowC (120,200,230);
-    QColor flame1  (255,180,60);
-    QColor flame2  (255,110,40);
-    QColor shadow  (20,14,24);
-
-    auto px = [&](int gx, int gy, const QColor& c){
-        plotGridPixel(p, baseGX+gx, baseGY+gy, c);
-    };
-
-
-    px(1,1,hull); px(2,1,hull); px(3,1,hull); px(4,1,hull);
-    px(1,2,hull); px(2,2,windowC); px(3,2,hull); px(4,2,hull); px(5,2,tip);
-    px(1,3,hull); px(2,3,hull);    px(3,3,hull); px(4,3,hull);
-    px(0,2,flame1); px(0,3,flame2);
-    px(2,4,shadow);
-
-    QFont f;
-    f.setFamily("Monospace");
-    f.setBold(true);
-    f.setPointSize(12);
-    p.setFont(f);
-    p.setPen(QColor(20,14,24));
-
-    double tleft = 0.0;
-    if (m_nitro) {
-        tleft = std::max(0.0, m_nitroEndTime - m_elapsedSeconds);
-    } else if (m_elapsedSeconds < m_nitroCooldownUntil) {
-        tleft = std::max(0.0, m_nitroCooldownUntil - m_elapsedSeconds);
-    }
-
-    int pxText = (baseGX + 8) * PIXEL_SIZE;
-    int pyText = (baseGY + 5) * PIXEL_SIZE;
-    p.drawText(pxText, pyText, QString::number(int(std::ceil(tleft))));
 }
 
 int MainWindow::groundGyNearestGX(int gx) const {
@@ -1130,7 +771,7 @@ int MainWindow::groundGyNearestGX(int gx) const {
 }
 
 double MainWindow::terrainTangentAngleAtX(double wx) const {
-    int gx = int(wx / PIXEL_SIZE);
+    int gx = int(wx / Constants::PIXEL_SIZE);
 
     int gyL = groundGyNearestGX(gx - 1);
     int gyR = groundGyNearestGX(gx + 1);
