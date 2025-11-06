@@ -1,0 +1,15 @@
+debug/carBody.o
+debug/coin.o
+debug/flip.o
+debug/fuel.o
+debug/intro.o
+debug/main.o
+debug/mainwindow.o
+debug/nitro.o
+debug/outro.o
+debug/point.o
+debug/wheel.o
+debug/line.o
+debug/moc_intro.o
+debug/moc_mainwindow.o
+debug/moc_outro.o

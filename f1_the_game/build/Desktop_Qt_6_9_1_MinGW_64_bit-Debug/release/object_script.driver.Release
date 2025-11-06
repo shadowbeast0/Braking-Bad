@@ -1,0 +1,15 @@
+release/carBody.o
+release/coin.o
+release/flip.o
+release/fuel.o
+release/intro.o
+release/main.o
+release/mainwindow.o
+release/nitro.o
+release/outro.o
+release/point.o
+release/wheel.o
+release/line.o
+release/moc_intro.o
+release/moc_mainwindow.o
+release/moc_outro.o
