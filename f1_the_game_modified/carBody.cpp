@@ -212,13 +212,13 @@ void CarBody::simulate(const QVector<Line>& terrain, bool accelerating, bool bra
             double dist = std::abs(m * x - y + b) / std::sqrt(m * m + 1);
             double intersectionx = (m * (y - b) + x) / (m * m + 1);
 
-            if (dist <= 3 && intersectionx >= line.getX1() - 1 && intersectionx <= line.getX2() + 1) {
+            if (dist <= 4 && intersectionx >= line.getX1() - 1 && intersectionx <= line.getX2() + 1) {
                 double intersectiony = m * intersectionx + b;
                 double theta = -std::atan(m);
 
-                while (dist < 3) {
-                    m_cy -= 1 * std::cos(theta);
-                    m_cx -= 1 * std::sin(theta);
+                while (dist < 4) {
+                    m_cy -= std::cos(theta);
+                    m_cx -= std::sin(theta);
                     int cur_x = static_cast<int>(std::round(m_cx + point.coords[0]));
                     int cur_y = static_cast<int>(std::round(m_cy + point.coords[1]));
                     dist = std::abs(m * cur_x - cur_y + b) / std::sqrt(m * m + 1);
@@ -336,31 +336,61 @@ void CarBody::simulate(const QVector<Line>& terrain, bool accelerating, bool bra
             const double targetY = m_cy + wy;
             w->updateR(targetX - w->getX(), targetY - w->getY());
         }
+
+        double corrX = 0.0, corrY = 0.0;
+        for (int i = 0; i < m_wheels.size(); ++i) {
+            Wheel* w = m_wheels.at(i);
+            const double desired = m_attachDistances.at(i);
+
+            double dx = w->getX() - m_cx;
+            double dy = w->getY() - m_cy;
+            double lx =  dx * cosA + dy * sinA;
+            double ly = -dx * sinA + dy * cosA;
+
+            const double minDown = std::max(0.2 * desired, 0.5 * double(w->radius()));
+            if (ly < minDown) {
+                double d = (minDown - ly);
+                corrX +=  ( sinA) * d;
+                corrY += (-cosA) * d;
+            }
+
+            double r = std::sqrt(dx*dx + dy*dy);
+            const double minR = 0.9 * desired;
+            if (r > 1e-6 && r < minR) {
+                double ux = dx / r, uy = dy / r;
+                double d = (minR - r);
+                corrX -= ux * d;
+                corrY -= uy * d;
+            }
+        }
+        double len = std::sqrt(corrX*corrX + corrY*corrY);
+        if (len > 0.0) {
+            double lim = 6.0;
+            if (len > lim) { corrX *= lim / len; corrY *= lim / len; }
+            m_cx += corrX;
+            m_cy += corrY;
+        }
     }
 
-    // averagex /= m_wheels.size();
-    // averagey /= m_wheels.size();
-    // averagevx /= m_wheels.size();
-    // averagevy /= m_wheels.size();
-
-    // double deltaX = averagex - m_cx;
-    // double deltaY = averagey - m_cy;
-
-    // double wheel_average_actual_distance = std::sqrt(deltaX * deltaX + deltaY * deltaY);
-
-    // if(wheel_average_actual_distance == 0) wheel_average_actual_distance = 1;
-
-    // double displacement = wheel_average_actual_distance - wheel_average_desired_distance;
-    // double springForceMagnitude = displacement * 5 * Constants::SPRING_CONSTANT;
-
-    // double unitX = -deltaX / wheel_average_actual_distance;
-    // double unitY = deltaY / wheel_average_actual_distance;
-
-    // double forceX = unitX * springForceMagnitude;
-    // double forceY = unitY * springForceMagnitude;
-
-    // m_vx -= (forceX);
-    // m_vy -= (forceY);
+    if (!m_isAlive) {
+        double pushUp = 0.0;
+        for (const Point& p : hitbox) {
+            int px = int(std::lround(m_cx + p.coords[0]));
+            int py = int(std::lround(m_cy + p.coords[1]));
+            for (const Line& line : terrain) {
+                int x1 = line.getX1(), x2 = line.getX2();
+                if (!((x1 <= px && px <= x2) || (x2 <= px && px <= x1))) continue;
+                double m = line.getSlope();
+                double b = line.getIntercept();
+                double gy = m * px + b;
+                double clear = 4.0;
+                double need = py - (gy - clear);
+                if (need > pushUp) pushUp = need;
+                break;
+            }
+        }
+        if (pushUp > 0.0) m_cy -= pushUp;
+    }
 }
 
 void CarBody::addAttachment(const QVector<QPoint>& points, const QColor& color) {

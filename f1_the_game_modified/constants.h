@@ -19,9 +19,9 @@ struct Constants {
     static constexpr double ROTATION        = 0.3;
 
     // CAR
-    static const QColor CAR_COLOR;
-    static const QColor TYRE_COLOR;
-    static const QColor WHEEL_COLOR;
+    static constexpr QColor CAR_COLOR = QColor(200, 50, 50);
+    static constexpr QColor WHEEL_COLOR_OUTER = QColor(40, 50, 60);
+    static constexpr QColor WHEEL_COLOR_INNER = QColor(160, 165, 170);
     static constexpr int TYRE_THICKNESS = 10;
 
     static constexpr int PIXEL_SIZE = 6;
@@ -59,7 +59,7 @@ struct Constants {
     // NITRO
     static constexpr int    NITRO_MAX_ALT_CELLS     = 2048;
     static constexpr double NITRO_THRUST            = 0.25;
-    static constexpr double NITRO_DURATION_SECOND   = 5.0;
+    static constexpr double NITRO_DURATION_SECOND   = 1.5;
 
     // CLOUD
     static constexpr int CLOUD_SPACING_PX       = 200;

@@ -225,8 +225,10 @@ void MainWindow::gameLoop() {
         if (w->x < minX) { w->x = minX; w->m_vx = 0; }
     }
 
-    m_fuelSys.handlePickups(m_wheels, m_fuel);
-    m_coinSys.handlePickups(m_wheels, m_coinCount);
+    if (!isFullyUpsideDown()) {
+        m_fuelSys.handlePickups(m_wheels, m_fuel);
+        m_coinSys.handlePickups(m_wheels, m_coinCount);
+    }
 
     {
         auto ptSegDist2 = [](double px, double py, const Line& ln)->double {
@@ -305,7 +307,6 @@ void MainWindow::paintEvent(QPaintEvent *event) {
     m_coinSys.drawWorldCoins(p, m_cameraX, m_cameraY, gridW(), gridH());
     m_nitroSys.drawFlame(p, m_wheels, m_cameraX, m_cameraY, width(), height());
 
-    const QColor wheelColor(40, 50, 60);
     for (const Wheel* wheel : m_wheels) {
         if (auto info = wheel->get(0, 0, width(), height(), -m_cameraX, m_cameraY)) {
             const int cx = (*info)[0];
@@ -315,11 +316,13 @@ void MainWindow::paintEvent(QPaintEvent *event) {
             const int gcx = cx / Constants::PIXEL_SIZE;
             const int gcy = cy / Constants::PIXEL_SIZE;
             const int gr  = r  / Constants::PIXEL_SIZE;
-            drawCircleFilledMidpointGrid(p, gcx, gcy, gr, wheelColor);
+            drawCircleFilledMidpointGrid(p, gcx, gcy, gr, Constants::WHEEL_COLOR_OUTER);
+            const int tyreCells = std::max(1, Constants::TYRE_THICKNESS / Constants::PIXEL_SIZE);
+            const int innerR = std::max(1, gr - tyreCells);
+            drawCircleFilledMidpointGrid(p, gcx, gcy, innerR, Constants::WHEEL_COLOR_INNER);
         }
     }
 
-    const QColor carColor(200, 50, 50);
     for(CarBody* body : m_bodies){
         auto pts = body->get(-m_cameraX, m_cameraY);
         QVector<QPoint> normalisedPoints;
@@ -327,9 +330,8 @@ void MainWindow::paintEvent(QPaintEvent *event) {
         for(auto p2 : pts){
             normalisedPoints.append(QPoint(p2.x() / Constants::PIXEL_SIZE, p2.y() / Constants::PIXEL_SIZE));
         }
-        fillPolygon(p, normalisedPoints, carColor);
+        fillPolygon(p, normalisedPoints, Constants::CAR_COLOR);
 
-        const QColor carColor(200, 50, 50);
         for(CarBody* body : m_bodies){
             auto pts = body->get(-m_cameraX, m_cameraY);
             QVector<QPoint> normalisedPoints;
@@ -337,7 +339,7 @@ void MainWindow::paintEvent(QPaintEvent *event) {
             for(auto p2 : pts){
                 normalisedPoints.append(QPoint(p2.x() / Constants::PIXEL_SIZE, p2.y() / Constants::PIXEL_SIZE));
             }
-            fillPolygon(p, normalisedPoints, carColor);
+            fillPolygon(p, normalisedPoints, Constants::CAR_COLOR);
 
             auto attach = body->getAttachments(-m_cameraX, m_cameraY);
             for (const auto& ap : attach) {
