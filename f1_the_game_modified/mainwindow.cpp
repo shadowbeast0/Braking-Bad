@@ -253,13 +253,30 @@ void MainWindow::gameLoop() {
             for (CarBody* body : m_bodies) {
                 const auto edges = body->getLines();
                 for (const Line& ln : edges) {
-                    if (ptSegDist2(coin.cx, coin.cy, ln) <= R2) { hit = true; break; }
+                    if (ptSegDist2(coin.cx, coin.cy, ln) <= R2) {
+                        hit = true;
+                        break;
+                    }
                 }
+
+                if (!hit) {
+                    const auto bodyPoints = body->get(0, 0);
+                    QPolygon polygon;
+                    for (const QPoint& p : bodyPoints)
+                        polygon << QPoint(p.x(), p.y());
+                    if (polygon.containsPoint(QPoint(coin.cx, coin.cy), Qt::OddEvenFill))
+                        hit = true;
+                }
+
                 if (hit) break;
             }
 
-            if (hit) { coin.taken = true; ++m_coinCount; }
+            if (hit) {
+                coin.taken = true;
+                ++m_coinCount;
+            }
         }
+
     }
 
     const bool fuelEmpty = (m_fuel <= 0.0);
