@@ -112,7 +112,7 @@ struct Constants {
     // === TEXT COLORS
     static constexpr QColor INTRO_COIN_COLOR = QColor(254, 194, 12);
     inline static QVector<QColor> TEXT_COLOR = {QColor(20,20,20), QColor(20,20,20), QColor(20,20,20), QColor(200,200,200), QColor(20,20,20)};
-    inline static QVector<QColor> FLIP_COLOR = {QColor(255,0,0), QColor(255,0,0), QColor(255,0,0), QColor(237,181,37), QColor(255,0,0)};
+    inline static QVector<QColor> FLIP_COLOR = {QColor(0,0,0), QColor(0,0,0), QColor(0,0,0), QColor(237,181,37), QColor(0,0,0)};
 };
 
 
