@@ -7,5 +7,6 @@
     <file alias="nitro.wav">assets/audio/nitro.wav</file>
     <file alias="coin.mp3">assets/audio/coin.mp3</file>
     <file alias="fuel.mp3">assets/audio/fuel.mp3</file>
+    <file alias="gameOver.mp3">assets/audio/gameOver.mp3</file>
   </qresource>
 </RCC>

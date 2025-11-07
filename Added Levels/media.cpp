@@ -19,6 +19,11 @@ Media::Media(QObject* parent) : QObject(parent) {
     m_nitroSfx->setSource(QUrl("qrc:/sfx/nitro.wav"));
     m_nitroSfx->setLoopCount(1);
     m_nitroSfx->setVolume(1.0);
+    m_gameOverOut = new QAudioOutput(this);
+    m_gameOverOut->setVolume(1.0);
+    m_gameOver = new QMediaPlayer(this);
+    m_gameOver->setAudioOutput(m_gameOverOut);
+    m_gameOver->setSource(QUrl("qrc:/sfx/gameOver.mp3"));
 
     const char* coinPath = "qrc:/sfx/coin.mp3";
     for (int i = 0; i < 3; ++i) {
@@ -118,4 +123,10 @@ void Media::fuelPickup() {
     auto* p = m_fuelPlayers[m_nextFuelPl];
     p->setPosition(0);
     p->play();
+}
+
+void Media::playGameOverOnce() {
+    if (!m_gameOver) return;
+    m_gameOver->setPosition(0);
+    m_gameOver->play();
 }

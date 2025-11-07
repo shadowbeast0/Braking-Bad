@@ -26,6 +26,8 @@ public:
     void coinPickup();
     void fuelPickup();
 
+    void playGameOverOnce();
+
 private:
     QAudioOutput* m_bgmOut = nullptr;
     QMediaPlayer* m_bgm    = nullptr;
@@ -42,4 +44,6 @@ private:
     QVector<QMediaPlayer*> m_fuelPlayers;
     QVector<QAudioOutput*> m_fuelOuts;
     int m_nextFuelPl = -1;
+    QAudioOutput* m_gameOverOut = nullptr;
+    QMediaPlayer* m_gameOver    = nullptr;
 };
