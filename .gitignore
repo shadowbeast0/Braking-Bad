@@ -8,11 +8,13 @@ build-*/
 cmake-build-*/
 
 debug/
+debug-*/
 release/
-.stash
-Makefile
-.Debug
-.Release
+release-*/
+*.stash
+*Makefile
+*.Debug
+*.Release
 
 # C extensions
 *.so
