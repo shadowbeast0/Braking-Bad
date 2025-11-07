@@ -25,12 +25,13 @@ struct Cloud {
 class IntroScreen : public QWidget {
     Q_OBJECT
 public:
-    explicit IntroScreen(QWidget* parent = nullptr);
+    explicit IntroScreen(QWidget* parent = nullptr, int levelIndex = 0);
     void setGrandCoins(int v);
 
 signals:
     void startRequested(int levelIndex);
     void exitRequested();
+    void unlockRequested(int levelIndex);
 
 protected:
     void paintEvent(QPaintEvent*) override;
@@ -55,11 +56,14 @@ private:
     // Buttons / rects
     QRect buttonRectStart() const;
     QRect buttonRectExit() const;
+    QRect buttonRectUnlock() const;
     QRect buttonRectLevelPrev() const;
     QRect buttonRectLevelNext() const;
 
     // Stage label → bottom pixel helper (for precise 5px offset)
     int stageLabelBottomPx() const;
+
+    void setLevelData(const QVector<bool>& unlocked, const QVector<int>& costs);
 
     // Grid helpers
     inline int gridW() const { return width()  / PIXEL_SIZE; }
@@ -108,6 +112,8 @@ private:
     int exitTopCells(int btnHCells) const;
 
     int level_index;
+
+    QVector<bool> levels_unlocked = {true, false, false, false, false};
 };
 
 #endif // INTRO_H

@@ -9,10 +9,10 @@
 
 constexpr int TITLE_STAGE_GAP_PX = 30;
 
-IntroScreen::IntroScreen(QWidget* parent) : QWidget(parent) {
+IntroScreen::IntroScreen(QWidget* parent, int levelIndex) : QWidget(parent) {
     setAttribute(Qt::WA_OpaquePaintEvent);
 
-    level_index = 0;
+    level_index = levelIndex;
 
     connect(&m_timer, &QTimer::timeout, this, [this]{
         m_scrollX += 2.0;
@@ -231,7 +231,7 @@ void IntroScreen::paintEvent(QPaintEvent*) {
     QString total = QString("%1").arg(m_grandCoins);
     int labelGX = iconGX + r*2 + 2;
     int labelGY = iconGY - (7*scale)/3;
-    drawPixelText(p, total, labelGX, labelGY, (double)scale, Constants::INTRO_COIN_COLOR, false);
+    drawPixelText(p, total, labelGX, labelGY, (double)scale, Constants::TEXT_COLOR[level_index], false);
 
     const QString title = "D.U.I.";
     int ts = titleScale();
@@ -283,40 +283,84 @@ void IntroScreen::paintEvent(QPaintEvent*) {
     // --- End selector ---
 
     // Buttons (now anchored 5px below stage label)
-    QRect rStart = buttonRectStart();
+    QRect rStart;
     QRect rExit  = buttonRectExit();
 
     p.setPen(Qt::NoPen);
-    p.setBrush(QColor(0,0,0,160));
-    p.drawRect(rStart.translated(3*PIXEL_SIZE,3*PIXEL_SIZE));
-    p.drawRect(rExit.translated(3*PIXEL_SIZE,3*PIXEL_SIZE));
 
-    p.setBrush(QColor(240,190,60));
-    p.drawRect(rStart);
+    if (levels_unlocked.value(level_index, true))
+    {
+        // --- THIS IS YOUR EXISTING "PLAY" BUTTON CODE ---
+        // (Draws the yellow "PLAY" button)
+        rStart = buttonRectStart();
+        p.setBrush(QColor(0,0,0,160));
+        p.drawRect(rStart.translated(3*PIXEL_SIZE,3*PIXEL_SIZE));
+        p.setBrush(QColor(240,190,60));
+        p.drawRect(rStart);
+
+        QString sStart = "PLAY";
+        int rStartWc = rStart.width()  / PIXEL_SIZE;
+        int rStartHc = rStart.height() / PIXEL_SIZE;
+        int bsStart = fitTextScaleToRect(rStartWc, rStartHc, sStart);
+        int sWCells = textWidthCells(sStart, bsStart);
+        int sGX = rStart.left()/PIXEL_SIZE + (rStartWc - sWCells)/2;
+        int sGY = rStart.top()/PIXEL_SIZE  + (rStartHc - 7*bsStart)/2;
+        drawPixelText(p, sStart, sGX, sGY, bsStart,  QColor(20,20,20), false);
+    }
+    else
+    {
+        // --- THIS IS THE NEW "LOCKED" BUTTON CODE ---
+        // (Draws a gray "UNLOCK" button)
+
+        rStart = buttonRectUnlock();
+
+        int cost = m_levelCosts.value(level_index, 999);
+        bool canAfford = (m_grandCoins >= cost);
+
+        // Draw shadow
+        p.setBrush(QColor(0,0,0,160));
+        p.drawRect(rStart.translated(3*PIXEL_SIZE,3*PIXEL_SIZE));
+
+        // Draw button (gray)
+        p.setBrush(QColor(100, 100, 110));
+        p.drawRect(rStart);
+
+        // Draw text (e.g., "UNLOCK: 10")
+        QString sStart = QString("UNLOCK: %1").arg(cost);
+        int rStartWc = rStart.width()  / PIXEL_SIZE;
+        int rStartHc = rStart.height() / PIXEL_SIZE;
+
+        // Fit text, but don't let it get TOO small
+        int bsStart = fitTextScaleToRect(rStartWc, rStartHc, sStart);
+
+        int sWCells = textWidthCells(sStart, bsStart);
+        int sGX = rStart.left()/PIXEL_SIZE + (rStartWc - sWCells)/2;
+        int sGY = rStart.top()/PIXEL_SIZE  + (rStartHc - 7*bsStart)/2;
+
+        // Text is white if affordable, red if not
+        QColor textColor = canAfford ? QColor(20, 20, 20) : QColor(255, 80, 80);
+        drawPixelText(p, sStart, sGX, sGY, bsStart, textColor, false);
+    }
+
+    // --- END OF "PLAY" BUTTON MODIFICATION ---
+
+    p.setBrush(QColor(0,0,0,160));
+    p.drawRect(rExit.translated(3*PIXEL_SIZE,3*PIXEL_SIZE));
     p.setBrush(QColor(200,80,90));
     p.drawRect(rExit);
 
-    QString sStart = "PLAY";
     QString sExit  = "EXIT";
 
-    int rStartWc = rStart.width()  / PIXEL_SIZE;
-    int rStartHc = rStart.height() / PIXEL_SIZE;
     int rExitWc  = rExit.width()   / PIXEL_SIZE;
     int rExitHc  = rExit.height()  / PIXEL_SIZE;
 
-    int bsStart = fitTextScaleToRect(rStartWc, rStartHc, sStart);
     int bsExit  = fitTextScaleToRect(rExitWc,  rExitHc,  sExit);
 
-    int sWCells = textWidthCells(sStart, bsStart);
     int eWCells = textWidthCells(sExit,  bsExit);
-
-    int sGX = rStart.left()/PIXEL_SIZE + (rStartWc - sWCells)/2;
-    int sGY = rStart.top()/PIXEL_SIZE  + (rStartHc - 7*bsStart)/2;
 
     int eGX = rExit.left()/PIXEL_SIZE  + (rExitWc  - eWCells)/2;
     int eGY = rExit.top()/PIXEL_SIZE   + (rExitHc  - 7*bsExit)/2;
 
-    drawPixelText(p, sStart, sGX, sGY, bsStart,  QColor(20,20,20), false);
     drawPixelText(p, sExit,  eGX, eGY,  bsExit,  QColor(20,20,20), false);
 }
 
@@ -334,7 +378,16 @@ void IntroScreen::mousePressEvent(QMouseEvent* e) {
         update();
         return;
     }
-    if (buttonRectStart().contains(e->pos())) { emit startRequested(level_index); return; }
+    if (buttonRectStart().contains(e->pos())) {
+        if (buttonRectStart().contains(e->pos())) {
+            if (levels_unlocked.value(level_index, true)) {
+                emit startRequested(level_index);
+            } else {
+                emit unlockRequested(level_index);
+            }
+            return;
+        }
+    }
     if (buttonRectExit().contains(e->pos()))  { emit exitRequested();             return; }
 }
 
@@ -343,7 +396,8 @@ QRect IntroScreen::buttonRectLevelPrev() const {
     int wCells = hCells;
     const int stageGapCells = (TITLE_STAGE_GAP_PX + PIXEL_SIZE - 1) / PIXEL_SIZE;
 
-    int yCells = startTopCells(0) - hCells - std::max(10, gridH()/40) + stageGapCells;
+    int yCells = startTopCells(0) - hCells - std::max(10, gridH()/40)
+                 + stageGapCells;
 
 
     const int fixedOffset = 80;
@@ -367,10 +421,9 @@ QRect IntroScreen::buttonRectLevelNext() const {
     return QRect(gx*PIXEL_SIZE, yCells*PIXEL_SIZE, wCells*PIXEL_SIZE, hCells*PIXEL_SIZE);
 }
 
-// --- New: bottom pixel of stage name (for 5px anchoring)
 int IntroScreen::stageLabelBottomPx() const {
     QRect rLevelPrev = buttonRectLevelPrev();
-    const int levelScale = 2; // same scale used when drawing stage name
+    const int levelScale = 2;
     int levelTopCells = rLevelPrev.top()/PIXEL_SIZE
                         + (rLevelPrev.height()/PIXEL_SIZE - 7*levelScale)/2
                         + std::max(3, gridH()/40);
@@ -383,7 +436,6 @@ QRect IntroScreen::buttonRectStart() const {
     int hCells = std::max(10, gridH()/18);
     int gx     = (gridW() - wCells) / 2;
 
-    // Play sits exactly 5 px under the stage label
     int topPx  = stageLabelBottomPx() + 100;
     int maxTop = gridH()*PIXEL_SIZE - hCells*PIXEL_SIZE - 1;
     if (topPx > maxTop) topPx = maxTop;
@@ -396,10 +448,21 @@ QRect IntroScreen::buttonRectExit() const {
     int hCells = std::max(10, gridH()/18);
     int gx     = (gridW() - wCells) / 2;
 
-    // Exit stacked under Play with normal gap
     int gapCells = std::max(10, gridH()/40);
     int topPx    = stageLabelBottomPx() + 50 + hCells*PIXEL_SIZE + gapCells*PIXEL_SIZE;
     int maxTop   = gridH()*PIXEL_SIZE - hCells*PIXEL_SIZE - 1;
+    if (topPx > maxTop) topPx = maxTop;
+
+    return QRect(gx*PIXEL_SIZE, topPx, wCells*PIXEL_SIZE, hCells*PIXEL_SIZE);
+}
+
+QRect IntroScreen::buttonRectUnlock() const{
+    int wCells = std::min(std::max(gridW()/2, 80), 120);
+    int hCells = std::max(10, gridH()/18);
+    int gx     = (gridW() - wCells) / 2;
+
+    int topPx  = stageLabelBottomPx() + 100;
+    int maxTop = gridH()*PIXEL_SIZE - hCells*PIXEL_SIZE - 1;
     if (topPx > maxTop) topPx = maxTop;
 
     return QRect(gx*PIXEL_SIZE, topPx, wCells*PIXEL_SIZE, hCells*PIXEL_SIZE);
@@ -554,4 +617,16 @@ void IntroScreen::drawPixelText(QPainter& p, const QString& s, int gx, int gy, i
             }
         }
     }
+}
+
+
+void IntroScreen::setLevelData(const QVector<bool>& unlocked, const QVector<int>& costs) {
+    if (unlocked.size() == m_levelNames.size()) {
+        levels_unlocked = unlocked;
+    }
+    if (costs.size() == m_levelNames.size()) {
+        m_levelCosts = costs;
+    }
+    // Refresh the screen to show new data
+    update();
 }
