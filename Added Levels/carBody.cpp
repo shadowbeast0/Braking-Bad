@@ -219,11 +219,11 @@ void CarBody::simulate(int level_index, const QVector<Line>& terrain, bool accel
             double dist = std::abs(m * x - y + b) / std::sqrt(m * m + 1);
             double intersectionx = (m * (y - b) + x) / (m * m + 1);
 
-            if (dist <= 2 && intersectionx >= line.getX1() - 1 && intersectionx <= line.getX2() + 1) {
+            if (dist <= 4 && intersectionx >= line.getX1() - 1 && intersectionx <= line.getX2() + 1) {
                 double intersectiony = m * intersectionx + b;
                 double theta = -std::atan(m);
 
-                while (dist < 2) {
+                while (dist < 4) {
                     m_cy -= std::cos(theta);
                     m_cx -= std::sin(theta);
                     int cur_x = static_cast<int>(std::round(m_cx + point.coords[0]));
@@ -279,7 +279,7 @@ void CarBody::simulate(int level_index, const QVector<Line>& terrain, bool accel
         double springForceMagnitude = displacement * Constants::SPRING_CONSTANT;
 
         double unitX = -deltaX / actualDistance;
-        double unitY = deltaY / actualDistance;
+        double unitY =  deltaY / actualDistance;
 
         double forceX = unitX * springForceMagnitude;
         double forceY = unitY * springForceMagnitude;
@@ -292,6 +292,70 @@ void CarBody::simulate(int level_index, const QVector<Line>& terrain, bool accel
         m_vx -= (forceX - dampingForceX);
         m_vy -= (forceY - dampingForceY);
         wheel->updateV(forceX - dampingForceX, forceY - dampingForceY);
+    }
+
+    if (m_isAlive && m_wheels.size() > 0) {
+        const double cosA = std::cos(m_angle);
+        const double sinA = std::sin(m_angle);
+        for (int i = 0; i < m_wheels.size(); ++i) {
+            Wheel* w = m_wheels.at(i);
+            const double desired = m_attachDistances.at(i);
+
+            double dx = w->getX() - m_cx;
+            double dy = w->getY() - m_cy;
+            double lx =  dx * cosA + dy * sinA;
+            double ly = -dx * sinA + dy * cosA;
+
+            const double minDown = std::max(0.2 * desired, 0.5 * double(w->radius()));
+            if (ly < minDown) ly = minDown;
+
+            const double r = std::sqrt(lx*lx + ly*ly);
+            const double minR = 0.8 * desired;
+            if (r > 1e-6 && r < minR) {
+                const double s = minR / r;
+                lx *= s; ly *= s;
+            }
+
+            double wx = lx * cosA - ly * sinA;
+            double wy = lx * sinA + ly * cosA;
+            const double targetX = m_cx + wx;
+            const double targetY = m_cy + wy;
+            w->updateR(targetX - w->getX(), targetY - w->getY());
+        }
+
+        double corrX = 0.0, corrY = 0.0;
+        for (int i = 0; i < m_wheels.size(); ++i) {
+            Wheel* w = m_wheels.at(i);
+            const double desired = m_attachDistances.at(i);
+
+            double dx = w->getX() - m_cx;
+            double dy = w->getY() - m_cy;
+            double lx =  dx * cosA + dy * sinA;
+            double ly = -dx * sinA + dy * cosA;
+
+            const double minDown = std::max(0.2 * desired, 0.5 * double(w->radius()));
+            if (ly < minDown) {
+                double d = (minDown - ly);
+                corrX +=  ( sinA) * d;
+                corrY += (-cosA) * d;
+            }
+
+            double r = std::sqrt(dx*dx + dy*dy);
+            const double minR = 0.9 * desired;
+            if (r > 1e-6 && r < minR) {
+                double ux = dx / r, uy = dy / r;
+                double d = (minR - r);
+                corrX -= ux * d;
+                corrY -= uy * d;
+            }
+        }
+        double len = std::sqrt(corrX*corrX + corrY*corrY);
+        if (len > 0.0) {
+            double lim = 6.0;
+            if (len > lim) { corrX *= lim / len; corrY *= lim / len; }
+            m_cx += corrX;
+            m_cy += corrY;
+        }
     }
 
     if (!m_isAlive) {
@@ -311,7 +375,8 @@ void CarBody::simulate(int level_index, const QVector<Line>& terrain, bool accel
                 break;
             }
         }
-        if (pushUp > 0.0) m_cy -= pushUp;
+        if (pushUp > 0.0)
+            m_cy -= pushUp;
     }
 }
 

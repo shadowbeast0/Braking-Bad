@@ -14,7 +14,7 @@ struct Constants {
     inline static QVector<double> FRICTION          = {0.003, 0.03, 0.0003, 0.001, 0,03};
     inline static QVector<double> TRACTION          = {1, 1.25, 0.75, 0.5, 0.75};
     inline static QVector<double> CLOUD_PROBABILITY = {0.5, 0.1, 0.7, 0, 0.05};
-    inline static QVector<QColor> SKY_COLOR         = {QColor(150,210,255), QColor(255,220,200), QColor(210,210,255), QColor(0,0,0), QColor(200, 150, 150)};
+    inline static QVector<QColor> SKY_COLOR = {QColor(150,210,255), QColor(255,220,200), QColor(210,210,255), QColor(0,0,0), QColor(200, 150, 150)};
 
     //CAR MECHANICS
     static constexpr double MAX_VELOCITY    = 30.0;
@@ -89,17 +89,22 @@ struct Constants {
     static constexpr double SCORE_DIST_PER_CELL = 1.0;
     static constexpr int SCORE_PER_COIN = 50;
     static constexpr int SCORE_PER_NITRO = 25;
+
+
+    // === TEXT COLORS
+    static constexpr QColor INTRO_COIN_COLOR = QColor(254, 194, 12);
+    static constexpr QColor INTRO_TEXT_COLOR = QColor(0, 0, 139);
 };
 
 
 //Level generation
-    static QVector<QString> m_levelNames = {
-        "MEADOW",
-        "DESERT",
-        "TUNDRA",
-        "LUNAR",
-        "MARTIAN"
-    };
+static QVector<QString> m_levelNames = {
+    "MEADOW",
+    "DESERT",
+    "TUNDRA",
+    "LUNAR",
+    "MARTIAN"
+};
 
 
 // palettes
@@ -156,37 +161,6 @@ inline const QVector<QVector<QColor>> m_dirtPalette = {
      QColor(135,105,100), QColor(120, 90, 85), QColor(135,105,100),
      QColor(80, 50, 45)}
 };
-
-/*
-inline const QVector<QColor> mainWin_m_grassPalette = {
-    QColor(100,140,50), QColor(115,155,60), QColor(130,170,80),
-    QColor(85,120,40),  QColor(100,140,50), QColor(115,155,60),
-    QColor(130,170,80), QColor(115,155,60), QColor(130,170,80),
-    QColor(85,120,40),  QColor(85,120,40),  QColor(100,140,50),
-    QColor(100,140,50), QColor(115,155,60), QColor(130,170,80),
-    QColor(85,120,40),  QColor(100,140,50), QColor(115,155,60),
-    QColor(85,120,40),  QColor(100,140,50), QColor(115,155,60),
-    QColor(100,140,50), QColor(115,155,60), QColor(130,170,80),
-    QColor(85,120,40),  QColor(130,170,80), QColor(130,170,80),
-    QColor(85,120,40)
-};
-
-inline const QVector<QColor> mainWin_m_dirtPalette = {
-    QColor(125,105,40), QColor(135,117,50), QColor(145,125,60),
-    QColor(145,125,60), QColor(150,120,50), QColor(120,100,30),
-    QColor(125,105,40), QColor(150,120,50), QColor(120,100,30),
-    QColor(150,120,50), QColor(125,105,40), QColor(135,117,50),
-    QColor(135,117,50), QColor(145,125,60), QColor(150,120,50),
-    QColor(120,100,30), QColor(125,105,40), QColor(135,117,50),
-    QColor(125,105,40), QColor(135,117,50), QColor(150,120,50),
-    QColor(145,125,60), QColor(145,125,60), QColor(145,125,60),
-    QColor(120,100,30), QColor(125,105,40), QColor(120,100,30),
-    QColor(120,100,30), QColor(150,120,50), QColor(125,105,40),
-    QColor(135,117,50), QColor(135,117,50), QColor(150,120,50),
-    QColor(145,125,60), QColor(120,100,30), QColor(150,120,50)
-};
-*/
-
 
 // font mapping
 inline const QHash<QChar, std::array<uint8_t,7>> font_map = {

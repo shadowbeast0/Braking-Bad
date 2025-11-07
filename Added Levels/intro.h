@@ -29,7 +29,7 @@ public:
     void setGrandCoins(int v);
 
 signals:
-    void startRequested(int levelIndex); // MODIFIED: Pass level index
+    void startRequested(int levelIndex);
     void exitRequested();
 
 protected:
@@ -47,16 +47,21 @@ private:
     void pruneHeightMap();
     void ensureAheadTerrain(int worldX);
     QColor grassShadeForBlock(int worldGX, int worldGY, bool greenify) const;
+
     void drawPixelText(QPainter& p, const QString& s, int gx, int gy, int scale, const QColor& c, bool bold);
     int  textWidthCells(const QString& s, int scale) const;
     int  fitTextScaleToRect(int wCells, int hCells, const QString& s) const;
+
+    // Buttons / rects
     QRect buttonRectStart() const;
     QRect buttonRectExit() const;
-
-    // ADDED: New helper functions for level buttons
     QRect buttonRectLevelPrev() const;
     QRect buttonRectLevelNext() const;
 
+    // Stage label → bottom pixel helper (for precise 5px offset)
+    int stageLabelBottomPx() const;
+
+    // Grid helpers
     inline int gridW() const { return width()  / PIXEL_SIZE; }
     inline int gridH() const { return height() / PIXEL_SIZE; }
     void drawCircleFilledMidpointGrid(QPainter& p, int gcx, int gcy, int gr, const QColor& c);
@@ -96,6 +101,7 @@ private:
     int m_grandCoins = 0;
     quint64 m_grandTotalCoins = 0;
 
+    // Title helpers (existing)
     int titleScale() const;
     int titleYCells() const;
     int startTopCells(int titleScale) const;

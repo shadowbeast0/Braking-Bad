@@ -7,6 +7,8 @@
 #include <cmath>
 #include <algorithm>
 
+constexpr int TITLE_STAGE_GAP_PX = 30;
+
 IntroScreen::IntroScreen(QWidget* parent) : QWidget(parent) {
     setAttribute(Qt::WA_OpaquePaintEvent);
 
@@ -236,24 +238,21 @@ void IntroScreen::paintEvent(QPaintEvent*) {
     int titleWCells = textWidthCells(title, ts);
     int tgx = (gridW() - titleWCells) / 2;
     int tgy = titleYCells();
-    drawPixelText(p, title, tgx, tgy, ts, QColor(20,24,28), true);
+    drawPixelText(p, title, tgx, tgy, ts, Constants::INTRO_TEXT_COLOR, true);
 
-    // --- ADDED: Draw Level Selector ---
+    // --- Level selector ---
     QRect rLevelPrev = buttonRectLevelPrev();
     QRect rLevelNext = buttonRectLevelNext();
 
-    // Draw button shadows
     p.setPen(Qt::NoPen);
     p.setBrush(QColor(0,0,0,160));
     p.drawRect(rLevelPrev.translated(3*PIXEL_SIZE,3*PIXEL_SIZE));
     p.drawRect(rLevelNext.translated(3*PIXEL_SIZE,3*PIXEL_SIZE));
 
-    // Draw buttons
-    p.setBrush(QColor(150, 150, 160)); // Gray for arrow buttons
+    p.setBrush(QColor(150, 150, 160));
     p.drawRect(rLevelPrev);
     p.drawRect(rLevelNext);
 
-    // Draw button text ("<" and ">")
     QString sPrev = "<";
     QString sNext = ">";
     int prevScale = fitTextScaleToRect(rLevelPrev.width()/PIXEL_SIZE, rLevelPrev.height()/PIXEL_SIZE, sPrev);
@@ -269,15 +268,21 @@ void IntroScreen::paintEvent(QPaintEvent*) {
                   rLevelNext.top()/PIXEL_SIZE  + (rLevelNext.height()/PIXEL_SIZE - 7*nextScale)/2,
                   nextScale, QColor(25,20,24), false);
 
-    // Draw Level Name Label
+    // Stage name (uses same geometry the helper replicates)
     QString levelName = m_levelNames[level_index];
-    int levelScale = 2; // Or calculate fit
+    int levelScale = 2;
     int levelWCells = textWidthCells(levelName, levelScale);
     int levelGX = (gridW() - levelWCells) / 2;
-    int levelGY = rLevelPrev.top()/PIXEL_SIZE + (rLevelPrev.height()/PIXEL_SIZE - 7*levelScale)/2;
-    drawPixelText(p, levelName, levelGX, levelGY, levelScale, QColor(240,240,250), true);
-    // --- END: Draw Level Selector ---
+    const int stageGapCells = (TITLE_STAGE_GAP_PX + PIXEL_SIZE - 1) / PIXEL_SIZE;
 
+    int levelGY = rLevelPrev.top()/PIXEL_SIZE
+                  + (rLevelPrev.height()/PIXEL_SIZE - 7*levelScale)/2
+                  + stageGapCells;
+
+    drawPixelText(p, levelName, levelGX, levelGY, levelScale, Constants::INTRO_TEXT_COLOR, true);
+    // --- End selector ---
+
+    // Buttons (now anchored 5px below stage label)
     QRect rStart = buttonRectStart();
     QRect rExit  = buttonRectExit();
 
@@ -316,32 +321,31 @@ void IntroScreen::paintEvent(QPaintEvent*) {
 }
 
 void IntroScreen::mousePressEvent(QMouseEvent* e) {
-    // ADDED: Handle level selector clicks
     if (buttonRectLevelPrev().contains(e->pos())) {
         level_index--;
-        if (level_index < 0) {
-            level_index = m_levelNames.size() - 1; // Wrap around
-        }
-        update(); // Redraw to show new level name
+        if (level_index < 0) level_index = m_levelNames.size() - 1;
+        update();
         return;
     }
 
     if (buttonRectLevelNext().contains(e->pos())) {
         level_index++;
-        if (level_index >= m_levelNames.size()) {
-            level_index = 0; // Wrap around
-        }
-        update(); // Redraw
+        if (level_index >= m_levelNames.size()) level_index = 0;
+        update();
         return;
     }
     if (buttonRectStart().contains(e->pos())) { emit startRequested(level_index); return; }
-    if (buttonRectExit().contains(e->pos()))  { emit exitRequested();  return; }
+    if (buttonRectExit().contains(e->pos()))  { emit exitRequested();             return; }
 }
 
 QRect IntroScreen::buttonRectLevelPrev() const {
     int hCells = std::max(10, gridH()/18);
-    int wCells = hCells; // Square buttons
-    int yCells = startTopCells(0) - hCells - std::max(10, gridH()/40); // Place above start btn
+    int wCells = hCells;
+    const int stageGapCells = (TITLE_STAGE_GAP_PX + PIXEL_SIZE - 1) / PIXEL_SIZE;
+
+    int yCells = startTopCells(0) - hCells - std::max(10, gridH()/40)
+                 + stageGapCells;               // <— was std::max(3, gridH()/40)
+
 
     const int fixedOffset = 80;
     int gx = (gridW() / 2) - fixedOffset - wCells;
@@ -352,7 +356,11 @@ QRect IntroScreen::buttonRectLevelPrev() const {
 QRect IntroScreen::buttonRectLevelNext() const {
     int hCells = std::max(10, gridH()/18);
     int wCells = hCells;
-    int yCells = startTopCells(0) - hCells - std::max(10, gridH()/40);
+    const int stageGapCells = (TITLE_STAGE_GAP_PX + PIXEL_SIZE - 1) / PIXEL_SIZE;
+
+    int yCells = startTopCells(0) - hCells - std::max(10, gridH()/40)
+                 + stageGapCells;               // <— was std::max(3, gridH()/40)
+
 
     const int fixedOffset = 80;
     int gx = (gridW() / 2) + fixedOffset;
@@ -360,20 +368,42 @@ QRect IntroScreen::buttonRectLevelNext() const {
     return QRect(gx*PIXEL_SIZE, yCells*PIXEL_SIZE, wCells*PIXEL_SIZE, hCells*PIXEL_SIZE);
 }
 
+// --- New: bottom pixel of stage name (for 5px anchoring)
+int IntroScreen::stageLabelBottomPx() const {
+    QRect rLevelPrev = buttonRectLevelPrev();
+    const int levelScale = 2; // same scale used when drawing stage name
+    int levelTopCells = rLevelPrev.top()/PIXEL_SIZE
+                        + (rLevelPrev.height()/PIXEL_SIZE - 7*levelScale)/2
+                        + std::max(3, gridH()/40);
+    int bottomCells = levelTopCells + 7*levelScale;
+    return bottomCells * PIXEL_SIZE;
+}
+
 QRect IntroScreen::buttonRectStart() const {
     int wCells = std::min(std::max(gridW()/6, 30), 50);
     int hCells = std::max(10, gridH()/18);
-    int gx = (gridW() - wCells) / 2;
-    int gy = startTopCells(titleScale());
-    return QRect(gx*PIXEL_SIZE, gy*PIXEL_SIZE, wCells*PIXEL_SIZE, hCells*PIXEL_SIZE);
+    int gx     = (gridW() - wCells) / 2;
+
+    // Play sits exactly 5 px under the stage label
+    int topPx  = stageLabelBottomPx() + 100;
+    int maxTop = gridH()*PIXEL_SIZE - hCells*PIXEL_SIZE - 1;
+    if (topPx > maxTop) topPx = maxTop;
+
+    return QRect(gx*PIXEL_SIZE, topPx, wCells*PIXEL_SIZE, hCells*PIXEL_SIZE);
 }
 
 QRect IntroScreen::buttonRectExit() const {
     int wCells = std::min(std::max(gridW()/6, 30), 50);
     int hCells = std::max(10, gridH()/18);
-    int gx = (gridW() - wCells) / 2;
-    int gy = exitTopCells(hCells);
-    return QRect(gx*PIXEL_SIZE, gy*PIXEL_SIZE, wCells*PIXEL_SIZE, hCells*PIXEL_SIZE);
+    int gx     = (gridW() - wCells) / 2;
+
+    // Exit stacked under Play with normal gap
+    int gapCells = std::max(10, gridH()/40);
+    int topPx    = stageLabelBottomPx() + 50 + hCells*PIXEL_SIZE + gapCells*PIXEL_SIZE;
+    int maxTop   = gridH()*PIXEL_SIZE - hCells*PIXEL_SIZE - 1;
+    if (topPx > maxTop) topPx = maxTop;
+
+    return QRect(gx*PIXEL_SIZE, topPx, wCells*PIXEL_SIZE, hCells*PIXEL_SIZE);
 }
 
 void IntroScreen::drawBackground(QPainter& p) {
@@ -447,7 +477,7 @@ void IntroScreen::rasterizeSegmentToHeightMapWorld(int x1,int y1,int x2,int y2){
     }
 
     const double dx = double(x2 - x1);
-    const double dy = double(y2 - y1);
+    double dy = double(y2 - y1);
 
     for (int gx = gx1; gx <= gx2; ++gx) {
         const double wx = gx * double(PIXEL_SIZE);
@@ -498,7 +528,7 @@ void IntroScreen::ensureAheadTerrain(int worldX) {
 
 void IntroScreen::drawPixelText(QPainter& p, const QString& s, int gx, int gy, int scale, const QColor& c, bool bold)
 {
-    auto plot = [&](int x,int y,const QColor& col){
+    auto plot = [&](int x,int y,const QColor& col) {
         plotGridPixel(p, gx + x, gy + y, col);
     };
 
@@ -506,19 +536,19 @@ void IntroScreen::drawPixelText(QPainter& p, const QString& s, int gx, int gy, i
         const QChar ch = s.at(i).toUpper();
         const auto rows = font_map.value(font_map.contains(ch) ? ch : QChar(' '));
         int baseOff = i * CHAR_ADV * scale;
-        for (int ry=0; ry<7; ++ry) {
+        for (int ry = 0; ry < 7; ++ry) {
             uint8_t row = rows[ry];
-            for (int rx=0; rx<5; ++rx) {
-                if (row & (1<<(4-rx))) {
-                    for (int sy=0; sy<scale; ++sy) {
-                        for (int sx=0; sx<scale; ++sx) {
+            for (int rx = 0; rx < 5; ++rx) {
+                if (row & (1 << (4 - rx))) {
+                    for (int sy = 0; sy < scale; ++sy) {
+                        for (int sx = 0; sx < scale; ++sx) {
                             if (bold) {
-                                plot(baseOff + rx*scale+sx-1, ry*scale+sy, QColor(20,20,22));
-                                plot(baseOff + rx*scale+sx+1, ry*scale+sy, QColor(20,20,22));
-                                plot(baseOff + rx*scale+sx, ry*scale+sy-1, QColor(20,20,22));
-                                plot(baseOff + rx*scale+sx, ry*scale+sy+1, QColor(20,20,22));
+                                plot(baseOff + rx*scale + sx - 1, ry*scale + sy, c);
+                                plot(baseOff + rx*scale + sx + 1, ry*scale + sy, c);
+                                plot(baseOff + rx*scale + sx, ry*scale + sy - 1, c);
+                                plot(baseOff + rx*scale + sx, ry*scale + sy + 1, c);
                             }
-                            plot(baseOff + rx*scale+sx, ry*scale+sy, c);
+                            plot(baseOff + rx*scale + sx, ry*scale + sy, c);
                         }
                     }
                 }

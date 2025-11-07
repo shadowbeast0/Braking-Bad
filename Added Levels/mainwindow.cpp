@@ -642,7 +642,7 @@ void MainWindow::ensureAheadTerrain(int worldX) {
 
 void MainWindow::maybeSpawnCloud() {
     if (m_lastX - m_lastCloudSpawnX < Constants::CLOUD_SPACING_PX) return;
-    if(rand() >= Constants::CLOUD_PROBABILITY[level_index]) return;
+    if (m_dist(m_rng) > Constants::CLOUD_PROBABILITY[level_index]) return;
 
     int gx = m_lastX / Constants::PIXEL_SIZE;
     auto it = m_heightAtGX.constFind(gx);

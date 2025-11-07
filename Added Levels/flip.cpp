@@ -6,10 +6,14 @@
 static inline int gx_from_px(int px){ return px / Constants::PIXEL_SIZE; }
 static inline int gy_from_px(int py){ return py / Constants::PIXEL_SIZE; }
 
-void FlipTracker::update(double angleRad, double carX, double carY, double nowSec,
-                         const std::function<void(int)>& onAward)
+void FlipTracker::update(double angleRad, double carX, double carY, double nowSec, const std::function<void(int)>& onAward)
 {
-    if (!m_init) { m_init = true; m_lastAng = angleRad; m_accum = 0.0; return; }
+    if (!m_init) {
+        m_init = true;
+        m_lastAng = angleRad;
+        m_accum = 0.0;
+        return;
+    }
 
     double d = angleRad - m_lastAng;
     while (d >  M_PI) d -= TWO_PI;
