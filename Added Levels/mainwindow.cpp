@@ -31,8 +31,6 @@ MainWindow::MainWindow(QWidget *parent)
     m_media->playBgm();
     generateInitialTerrain();
 
-    loadGrandCoins();
-
     Wheel* w1 = new Wheel(100, 300, 20);
     Wheel* w2 = new Wheel(220, 300, 20);
     Wheel* w3 = new Wheel(160, 300, 0);
@@ -86,7 +84,6 @@ MainWindow::MainWindow(QWidget *parent)
 
     m_intro = new IntroScreen(this);
     m_intro->setGeometry(rect());
-    m_intro->setGrandCoins(m_grandTotalCoins);
     m_intro->show();
     m_timer->stop();
 
@@ -844,6 +841,7 @@ void MainWindow::showGameOver() {
 }
 
 void MainWindow::returnToIntro() {
+    loadGrandCoins();
     ++m_sessionId;
     m_gameOverArmed = false;
     m_roofCrashLatched = false;
@@ -917,6 +915,7 @@ void MainWindow::disarmGameOver() {
 }
 
 void MainWindow::resetGameRound() {
+    loadGrandCoins();
     QPalette pal = palette();
     pal.setColor(QPalette::Window, Constants::SKY_COLOR[level_index]);
     setAutoFillBackground(true);

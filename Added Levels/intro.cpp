@@ -43,6 +43,9 @@ IntroScreen::IntroScreen(QWidget* parent, int levelIndex) : QWidget(parent) {
             maybeSpawnCloud();
         }
 
+        loadGrandCoins();
+        loadUnlocks();
+
         update();
     });
 
@@ -67,7 +70,7 @@ IntroScreen::IntroScreen(QWidget* parent, int levelIndex) : QWidget(parent) {
 }
 
 void IntroScreen::setGrandCoins(int v){
-    m_grandCoins = v;
+    m_grandTotalCoins = v;
     update();
 }
 
@@ -228,7 +231,7 @@ void IntroScreen::paintEvent(QPaintEvent*) {
     plotGridPixel(p, iconGX-1, iconGY-r+1, QColor(255,255,220));
 
     double scale = 1;
-    QString total = QString("%1").arg(m_grandCoins);
+    QString total = QString("%1").arg(m_grandTotalCoins);
     int labelGX = iconGX + r*2 + 2;
     int labelGY = iconGY - (7*scale)/3;
     drawPixelText(p, total, labelGX, labelGY, (double)scale, Constants::TEXT_COLOR[level_index], false);
@@ -315,7 +318,7 @@ void IntroScreen::paintEvent(QPaintEvent*) {
         rStart = buttonRectUnlock();
 
         int cost = m_levelCosts.value(level_index, 999);
-        bool canAfford = (m_grandCoins >= cost);
+        bool canAfford = (m_grandTotalCoins >= (quint64)cost);
 
         // Draw shadow
         p.setBrush(QColor(0,0,0,160));
@@ -378,15 +381,19 @@ void IntroScreen::mousePressEvent(QMouseEvent* e) {
         update();
         return;
     }
-    if (buttonRectStart().contains(e->pos())) {
-        if (buttonRectStart().contains(e->pos())) {
-            if (levels_unlocked.value(level_index, true)) {
-                emit startRequested(level_index);
-            } else {
-                emit unlockRequested(level_index);
-            }
-            return;
+    if (buttonRectStart().contains(e->pos())) {emit startRequested(level_index); return;}
+
+    if (buttonRectUnlock().contains(e->pos())){
+        int cost = m_levelCosts.value(level_index, 0);
+        bool canAfford = (m_grandTotalCoins >= (quint64)cost);
+        if(canAfford){
+            m_grandTotalCoins -= cost;
+            levels_unlocked[level_index] = true;
+            saveGrandCoins();
+            saveUnlocks();
+            update();
         }
+        return;
     }
     if (buttonRectExit().contains(e->pos()))  { emit exitRequested();             return; }
 }
@@ -620,13 +627,52 @@ void IntroScreen::drawPixelText(QPainter& p, const QString& s, int gx, int gy, i
 }
 
 
-void IntroScreen::setLevelData(const QVector<bool>& unlocked, const QVector<int>& costs) {
-    if (unlocked.size() == m_levelNames.size()) {
-        levels_unlocked = unlocked;
+void IntroScreen::saveGrandCoins() const {
+    QSettings s("JU","F1PixelGrid");
+    s.setValue("grandCoins", m_grandTotalCoins);
+    s.sync();
+}
+
+void IntroScreen::loadGrandCoins() {
+    QSettings s("JU","F1PixelGrid");
+    m_grandTotalCoins = s.value("grandCoins", 0).toInt();
+}
+
+void IntroScreen::saveUnlocks() const {
+    QSettings s("JU","F1PixelGrid");
+
+    QVariantList unlockList;
+
+    // Manually copy each bool into the QVariantList
+    for(bool unlocked : levels_unlocked) {
+        unlockList.append(unlocked); // QVariant can store a bool
     }
-    if (costs.size() == m_levelNames.size()) {
-        m_levelCosts = costs;
+
+    // Save the QVariantList
+    s.setValue("unlocks", unlockList);
+    s.sync();
+}
+
+void IntroScreen::loadUnlocks() {
+    QSettings s("JU","F1PixelGrid");
+    QVariant unlockData = s.value("unlocks");
+
+    if (unlockData.isValid()) {
+
+        QVariantList savedList = unlockData.toList();
+
+        levels_unlocked.clear();
+
+        for(const QVariant& item : savedList) {
+            levels_unlocked.append(item.toBool());
+        }
+
+        if (levels_unlocked.size() != m_levelCosts.size()) {
+            levels_unlocked = {true, false, false, false, false};
+        }
     }
-    // Refresh the screen to show new data
-    update();
+    else
+    {
+        levels_unlocked = {true, false, false, false, false};
+    }
 }

@@ -7,8 +7,10 @@
 #include <QHash>
 #include <QColor>
 #include <QVector>
+#include <QList>
 #include "line.h"
 #include "constants.h"
+#include <QSettings>
 
 class QPainter;
 class QMouseEvent;
@@ -31,7 +33,6 @@ public:
 signals:
     void startRequested(int levelIndex);
     void exitRequested();
-    void unlockRequested(int levelIndex);
 
 protected:
     void paintEvent(QPaintEvent*) override;
@@ -60,10 +61,13 @@ private:
     QRect buttonRectLevelPrev() const;
     QRect buttonRectLevelNext() const;
 
+    void saveUnlocks() const;
+    void loadUnlocks();
+    void saveGrandCoins() const;
+    void loadGrandCoins();
+
     // Stage label → bottom pixel helper (for precise 5px offset)
     int stageLabelBottomPx() const;
-
-    void setLevelData(const QVector<bool>& unlocked, const QVector<int>& costs);
 
     // Grid helpers
     inline int gridW() const { return width()  / PIXEL_SIZE; }
@@ -102,7 +106,6 @@ private:
 
     qreal m_blurScale = 0.6;
 
-    int m_grandCoins = 0;
     quint64 m_grandTotalCoins = 0;
 
     // Title helpers (existing)

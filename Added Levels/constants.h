@@ -106,7 +106,7 @@ static QVector<QString> m_levelNames = {
     "MARTIAN"
 };
 
-static QVector<int>  m_levelCosts = {0, 3000, 6000, 10000, 15000};
+static QVector<int>  m_levelCosts = {0, 300, 600, 1000, 1500};
 
 // palettes
 inline const QVector<QVector<QColor>> m_grassPalette = {
