@@ -25,6 +25,10 @@ MainWindow::MainWindow(QWidget *parent)
 
     showFullScreen();
 
+    m_media = new Media(this);
+    m_media->setupBgm();
+    m_media->setBgmVolume(0.35);
+    m_media->playBgm();
     generateInitialTerrain();
 
     loadGrandCoins();
@@ -110,7 +114,6 @@ void MainWindow::resizeEvent(QResizeEvent *e) {
     QWidget::resizeEvent(e);
     if (m_intro) m_intro->setGeometry(rect());
 }
-
 void MainWindow::generateInitialTerrain() {
     m_lastY = height() / 2;
     for (int i = m_step; i <= width() + m_step; i += m_step) {
@@ -134,7 +137,8 @@ void MainWindow::gameLoop() {
     const double dt = std::clamp(dtns / 1e9, 0.001, 0.033);
 
     m_elapsedSeconds += dt;
-
+    double fuelBefore = m_fuel;
+    int coinsBefore = m_coinCount;
     double avgX = 0.0, avgY = 0.0;
     if (!m_wheels.isEmpty()) {
         for (const Wheel* w : m_wheels) { avgX += w->x; avgY += w->y; }
@@ -242,7 +246,8 @@ void MainWindow::gameLoop() {
         m_fuelSys.handlePickups(m_wheels, m_fuel);
         m_coinSys.handlePickups(m_wheels, m_coinCount);
     }
-
+    if (m_coinCount > coinsBefore) m_media->coinPickup();
+    if ((m_fuel - fuelBefore) > 1e-3 && !m_suppressFuelSfx) m_media->fuelPickup();
     {
         auto ptSegDist2 = [](double px, double py, const Line& ln)->double {
             double x1 = ln.getX1(), y1 = ln.getY1();
@@ -529,6 +534,7 @@ void MainWindow::keyPressEvent(QKeyEvent *event) {
     switch (event->key()) {
     case Qt::Key_D:
     case Qt::Key_Right:
+        if (!m_accelerating) m_media->startAccelLoop();
         m_accelerating = true;
         break;
     case Qt::Key_A:
@@ -537,6 +543,7 @@ void MainWindow::keyPressEvent(QKeyEvent *event) {
         break;
     case Qt::Key_W:
     case Qt::Key_Up:
+        m_media->playNitroOnce();
         m_nitroKey = true;
         break;
     case Qt::Key_G:
@@ -557,6 +564,7 @@ void MainWindow::keyReleaseEvent(QKeyEvent *event) {
     case Qt::Key_D:
     case Qt::Key_Right:
         m_accelerating = false;
+        m_media->stopAccelLoop();
         break;
     case Qt::Key_A:
     case Qt::Key_Left:

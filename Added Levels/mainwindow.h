@@ -10,6 +10,7 @@
 #include <QColor>
 #include <QElapsedTimer>
 #include <random>
+#include "media.h"
 
 #include "constants.h"
 #include "line.h"
@@ -43,6 +44,8 @@ private slots:
     void gameLoop();
 
 private:
+    Media* m_media = nullptr;
+    bool m_suppressFuelSfx = false;
     void generateInitialTerrain();
     void drawGridOverlay(QPainter& p);
     inline int gridW() const { return width()  / Constants::PIXEL_SIZE; }

@@ -1,6 +1,6 @@
 # driver.pro
 
-QT       += core gui widgets
+QT       += core gui widgets multimedia
 CONFIG   += c++17
 
 TARGET = driver
@@ -15,6 +15,7 @@ HEADERS += \
     fuel.h \
     intro.h \
     mainwindow.h \
+    media.h \
     nitro.h \
     outro.h \
     point.h \
@@ -30,6 +31,7 @@ SOURCES += \
     intro.cpp \
     main.cpp \
     mainwindow.cpp \
+    media.cpp \
     nitro.cpp \
     outro.cpp \
     point.cpp \
@@ -37,3 +39,6 @@ SOURCES += \
     line.cpp
 FORMS += \
     mainwindow.ui
+
+RESOURCES += \
+    assets.qrc
