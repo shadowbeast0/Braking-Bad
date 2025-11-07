@@ -16,11 +16,10 @@ public:
         m_popups.clear();
     }
 
-    void update(double angleRad, double carX, double carY, double nowSec,
-                const std::function<void(int)>& onAward);
+    void update(double angleRad, double carX, double carY, double nowSec, const std::function<void(int)>& onAward);
 
     // HUD: now just "Flips: N" (no icon), aligned with other HUD texts
-    void drawHUD(QPainter& p) const;
+    void drawHUD(QPainter& p, int levelIndex) const;
 
     // World popup: "Flip!" over the car after each flip
     void drawWorldPopups(QPainter& p, int cameraX, int cameraY) const;

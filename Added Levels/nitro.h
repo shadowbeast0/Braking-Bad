@@ -31,7 +31,7 @@ public:
     void applyThrust(QList<Wheel*>& wheels) const;
 
     // Keep the *previous* pixel HUD (rocket icon + countdown)
-    void drawHUD(QPainter& p, double elapsedSeconds) const;
+    void drawHUD(QPainter& p, double elapsedSeconds, int levelIndex) const;
 
     // Keep the *previous* nitro flame look (based on first/back wheel and first front)
     void drawFlame(QPainter& p, const QList<Wheel*>& wheels, int cameraX, int cameraY, int viewW, int viewH) const;

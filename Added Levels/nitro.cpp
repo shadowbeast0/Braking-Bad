@@ -56,50 +56,36 @@ void NitroSystem::applyThrust(QList<Wheel*>& wheels) const {
     }
 }
 
-void NitroSystem::drawHUD(QPainter& p, double elapsedSeconds) const {
-    // previous pixel rocket icon + countdown
+void NitroSystem::drawHUD(QPainter& p, double elapsedSeconds, int levelIndex) const {
     int baseGX = Constants::HUD_LEFT_MARGIN;
     int baseGY = Constants::HUD_TOP_MARGIN + Constants::COIN_RADIUS_CELLS*2 + 4;
-
-    QColor hull    (90,90,110);
-    QColor tip     (180,180,190);
-    QColor windowC (120,200,230);
-    QColor flame1  (255,180,60);
-    QColor flame2  (255,110,40);
-    QColor shadow  (20,14,24);
-
+    QColor hull(90,90,110);
+    QColor tip(180,180,190);
+    QColor windowC(120,200,230);
+    QColor flame1(255,180,60);
+    QColor flame2(255,110,40);
+    QColor shadow(20,14,24);
     auto plot = [&](int gx, int gy, const QColor& c){
         p.fillRect((baseGX+gx) * Constants::PIXEL_SIZE,
                    (baseGY+gy) * Constants::PIXEL_SIZE,
                    Constants::PIXEL_SIZE, Constants::PIXEL_SIZE, c);
     };
-
-    // rocket
     plot(1,1,hull); plot(2,1,hull); plot(3,1,hull); plot(4,1,hull);
     plot(1,2,hull); plot(2,2,windowC); plot(3,2,hull); plot(4,2,hull); plot(5,2,tip);
-    plot(1,3,hull); plot(2,3,hull);    plot(3,3,hull); plot(4,3,hull);
+    plot(1,3,hull); plot(2,3,hull); plot(3,3,hull); plot(4,3,hull);
     plot(0,2,flame1); plot(0,3,flame2);
     plot(2,4,shadow);
-
-    // countdown text
-    QFont f;
-    f.setFamily("Monospace");
-    f.setBold(true);
-    f.setPointSize(12);
+    QFont f; f.setFamily("Monospace"); f.setBold(true); f.setPointSize(12);
     p.setFont(f);
-    p.setPen(QColor(20,14,24));
-
+    p.setPen(Constants::TEXT_COLOR[levelIndex]);
     double tleft = 0.0;
-    if (active) {
-        tleft = std::max(0.0, endTime - elapsedSeconds);
-    } else if (elapsedSeconds < cooldownUntil) {
-        tleft = std::max(0.0, cooldownUntil - elapsedSeconds);
-    }
-
+    if (active) tleft = std::max(0.0, endTime - elapsedSeconds);
+    else if (elapsedSeconds < cooldownUntil) tleft = std::max(0.0, cooldownUntil - elapsedSeconds);
     int pxText = (baseGX + 8) * Constants::PIXEL_SIZE;
     int pyText = (baseGY + 5) * Constants::PIXEL_SIZE;
     p.drawText(pxText, pyText, QString::number(int(std::ceil(tleft))));
 }
+
 
 void NitroSystem::drawFlame(QPainter& p, const QList<Wheel*>& wheels, int cameraX, int cameraY, int viewW, int viewH) const {
     if (!active) return;

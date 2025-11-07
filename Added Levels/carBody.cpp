@@ -7,8 +7,7 @@
 #include <QPoint>
 #include <constants.h>
 
-CarBody::CarBody() : m_cx(0.0), m_cy(0.0), m_angle(0.0), m_vx(0.0), m_vy(0.0), m_isAlive(true) {
-}
+CarBody::CarBody() : m_cx(0.0), m_cy(0.0), m_angle(0.0), m_vx(0.0), m_vy(0.0), m_isAlive(true) {}
 
 CarBody::~CarBody() {
     m_wheels.clear();

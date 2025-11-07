@@ -16,6 +16,7 @@ struct Constants {
     inline static QVector<double> CLOUD_PROBABILITY = {0.5, 0.1, 0.7, 0, 0.05};
     inline static QVector<QColor> SKY_COLOR = {QColor(150,210,255), QColor(255,220,200), QColor(210,210,255), QColor(0,0,0), QColor(200, 150, 150)};
 
+
     //CAR MECHANICS
     static constexpr double MAX_VELOCITY    = 30.0;
     static constexpr double ACCELERATION    = 0.9;
@@ -67,7 +68,7 @@ struct Constants {
 
     // NITRO
     static constexpr int    NITRO_MAX_ALT_CELLS     = 2048;
-    static constexpr double NITRO_THRUST            = 0.25;
+    static constexpr double NITRO_THRUST            = 0.125;
     static constexpr double NITRO_DURATION_SECOND   = 1.5;
 
     // CLOUD
@@ -93,7 +94,7 @@ struct Constants {
 
     // === TEXT COLORS
     static constexpr QColor INTRO_COIN_COLOR = QColor(254, 194, 12);
-    inline static QVector<QColor> INTRO_TEXT_COLOR = {QColor(20,20,20), QColor(20,20,20), QColor(20,20,20), QColor(200,200,200), QColor(20,20,20)};
+    inline static QVector<QColor> TEXT_COLOR = {QColor(20,20,20), QColor(20,20,20), QColor(20,20,20), QColor(200,200,200), QColor(20,20,20)};
 };
 
 

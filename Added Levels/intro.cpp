@@ -231,14 +231,14 @@ void IntroScreen::paintEvent(QPaintEvent*) {
     QString total = QString("%1").arg(m_grandCoins);
     int labelGX = iconGX + r*2 + 2;
     int labelGY = iconGY - (7*scale)/3;
-    drawPixelText(p, total, labelGX, labelGY, (double)scale, Constants::INTRO_TEXT_COLOR[level_index], false);
+    drawPixelText(p, total, labelGX, labelGY, (double)scale, Constants::INTRO_COIN_COLOR, false);
 
     const QString title = "D.U.I.";
     int ts = titleScale();
     int titleWCells = textWidthCells(title, ts);
     int tgx = (gridW() - titleWCells) / 2;
     int tgy = titleYCells();
-    drawPixelText(p, title, tgx, tgy, ts, Constants::INTRO_TEXT_COLOR[level_index], true);
+    drawPixelText(p, title, tgx, tgy, ts, Constants::TEXT_COLOR[level_index], true);
 
     // --- Level selector ---
     QRect rLevelPrev = buttonRectLevelPrev();
@@ -279,7 +279,7 @@ void IntroScreen::paintEvent(QPaintEvent*) {
                   + (rLevelPrev.height()/PIXEL_SIZE - 7*levelScale)/2
                   + stageGapCells;
 
-    drawPixelText(p, levelName, levelGX, levelGY, levelScale, Constants::INTRO_TEXT_COLOR[level_index], true);
+    drawPixelText(p, levelName, levelGX, levelGY, levelScale, Constants::TEXT_COLOR[level_index], true);
     // --- End selector ---
 
     // Buttons (now anchored 5px below stage label)
@@ -343,8 +343,7 @@ QRect IntroScreen::buttonRectLevelPrev() const {
     int wCells = hCells;
     const int stageGapCells = (TITLE_STAGE_GAP_PX + PIXEL_SIZE - 1) / PIXEL_SIZE;
 
-    int yCells = startTopCells(0) - hCells - std::max(10, gridH()/40)
-                 + stageGapCells;               // <— was std::max(3, gridH()/40)
+    int yCells = startTopCells(0) - hCells - std::max(10, gridH()/40) + stageGapCells;
 
 
     const int fixedOffset = 80;

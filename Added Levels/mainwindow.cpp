@@ -110,10 +110,13 @@ MainWindow::~MainWindow() {
     qDeleteAll(m_wheels);
 }
 
+
 void MainWindow::resizeEvent(QResizeEvent *e) {
     QWidget::resizeEvent(e);
     if (m_intro) m_intro->setGeometry(rect());
 }
+
+
 void MainWindow::generateInitialTerrain() {
     m_lastY = height() / 2;
     for (int i = m_step; i <= width() + m_step; i += m_step) {
@@ -393,9 +396,10 @@ void MainWindow::paintEvent(QPaintEvent *event) {
 
     drawHUDFuel(p);
     drawHUDCoins(p);
-    m_nitroSys.drawHUD(p, m_elapsedSeconds);
-    m_flip.drawHUD(p);
+    m_nitroSys.drawHUD(p, m_elapsedSeconds, level_index);
+    m_flip.drawHUD(p, level_index);
     drawHUDDistance(p);
+    drawHUDScore(p);
 }
 
 void MainWindow::updateCamera(double tx, double ty, double dt) {
@@ -532,28 +536,28 @@ void MainWindow::keyPressEvent(QKeyEvent *event) {
     if (event->isAutoRepeat()) return;
 
     switch (event->key()) {
-    case Qt::Key_D:
-    case Qt::Key_Right:
-        if (!m_accelerating) m_media->startAccelLoop();
-        m_accelerating = true;
-        break;
-    case Qt::Key_A:
-    case Qt::Key_Left:
-        m_braking = true;
-        break;
-    case Qt::Key_W:
-    case Qt::Key_Up:
-        m_media->playNitroOnce();
-        m_nitroKey = true;
-        break;
-    case Qt::Key_G:
-        m_showGrid = !m_showGrid;
-        break;
-    case Qt::Key_Escape:
-        close();
-        break;
-    default:
-        QWidget::keyPressEvent(event);
+        case Qt::Key_D:
+        case Qt::Key_Right:
+            if (!m_accelerating) m_media->startAccelLoop();
+            m_accelerating = true;
+            break;
+        case Qt::Key_A:
+        case Qt::Key_Left:
+            m_braking = true;
+            break;
+        case Qt::Key_W:
+        case Qt::Key_Up:
+            m_media->playNitroOnce();
+            m_nitroKey = true;
+            break;
+        case Qt::Key_G:
+            m_showGrid = !m_showGrid;
+            break;
+        case Qt::Key_Escape:
+            close();
+            break;
+        default:
+            QWidget::keyPressEvent(event);
     }
 }
 
@@ -579,37 +583,6 @@ void MainWindow::keyReleaseEvent(QKeyEvent *event) {
     }
 }
 
-void MainWindow::drawHUDFuel(QPainter& p) {
-    int gy = Constants::HUD_TOP_MARGIN;
-    int wcells = std::min(std::max(gridW()/4, 24), 48);
-    int gx = (gridW() - wcells)/2;
-    int barH = 3;
-
-    double frac = std::clamp(m_fuel / Constants::FUEL_MAX, 0.0, 1.0);
-    int filled = int(std::floor(wcells * frac));
-
-    auto lerp = [](const QColor& c1, const QColor& c2, double t)->QColor {
-        int r = int((1-t)*c1.red()   + t*c2.red());
-        int g = int((1-t)*c1.green() + t*c2.green());
-        int b = int((1-t)*c1.blue()  + t*c2.blue());
-        return QColor(r,g,b);
-    };
-
-    QColor startC(40,230,55), midC(250,230,80), endC(230,50,40);
-
-    for (int x=0; x<wcells; ++x) for (int y=0; y<barH; ++y) plotGridPixel(p, gx+x, gy+y, QColor(20,14,24));
-    for (int x=0; x<filled; ++x) {
-        double t = double(x)/std::max(wcells-1,1);
-        QColor c = (t<0.5) ? lerp(startC, midC, t*2) : lerp(midC, endC, (t-0.5)*2);
-        for (int y=0; y<barH; ++y) plotGridPixel(p, gx+x, gy+y, c);
-    }
-
-    for (int y=0; y<barH; ++y) { plotGridPixel(p,gx-1,gy+y,QColor(35,35,48)); plotGridPixel(p,gx+wcells,gy+y,QColor(35,35,48)); }
-    for (int x=-1; x<=wcells; ++x) { plotGridPixel(p,gx+x,gy-1,QColor(35,35,48)); plotGridPixel(p,gx+x,gy+barH,QColor(35,35,48)); }
-
-    int tickEvery = std::max(6, wcells/6);
-    for (int x=tickEvery; x<wcells; x+=tickEvery) plotGridPixel(p, gx+x, gy+barH, QColor(80,80,70));
-}
 
 double MainWindow::averageSpeed() const {
     if (m_wheels.isEmpty()) return 0.0;
@@ -748,6 +721,51 @@ QColor MainWindow::grassShadeForBlock(int worldGX, int worldGY, bool greenify) c
     }
 }
 
+void MainWindow::drawHUDFuel(QPainter& p) {
+    int gy = Constants::HUD_TOP_MARGIN;
+    int wcells = std::min(std::max(gridW()/4, 24), 48);
+    int gx = (gridW() - wcells)/2;
+    int barH = 3;
+
+    double frac = std::clamp(m_fuel / Constants::FUEL_MAX, 0.0, 1.0);
+    int filled = int(std::floor(wcells * frac));
+
+    auto lerp = [](const QColor& c1, const QColor& c2, double t)->QColor {
+        int r = int((1-t)*c1.red()   + t*c2.red());
+        int g = int((1-t)*c1.green() + t*c2.green());
+        int b = int((1-t)*c1.blue()  + t*c2.blue());
+        return QColor(r,g,b);
+    };
+
+    QColor startC(40,230,55), midC(250,230,80), endC(230,50,40);
+
+    for (int x=0; x<wcells; ++x)
+        for (int y=0; y<barH; ++y)
+            plotGridPixel(p, gx+x, gy+y, QColor(20,14,24));
+
+    for (int x=0; x<filled; ++x) {
+        double t = double(x)/std::max(wcells-1,1);
+        QColor c = (t<0.5) ? lerp(startC, midC, t*2) : lerp(midC, endC, (t-0.5)*2);
+        for (int y=0; y<barH; ++y)
+            plotGridPixel(p, gx+x, gy+y, c);
+    }
+
+    for (int y=0; y<barH; ++y) {
+        plotGridPixel(p,gx-1,gy+y,QColor(35,35,48));
+        plotGridPixel(p,gx+wcells,gy+y,QColor(35,35,48));
+    }
+
+    for (int x=-1; x<=wcells; ++x) {
+        plotGridPixel(p,gx+x,gy-1,QColor(35,35,48));
+        plotGridPixel(p,gx+x,gy+barH,QColor(35,35,48));
+    }
+
+    int tickEvery = std::max(6, wcells/6);
+
+    for (int x=tickEvery; x<wcells; x+=tickEvery)
+        plotGridPixel(p, gx+x, gy+barH, QColor(80,80,70));
+}
+
 void MainWindow::drawHUDCoins(QPainter& p) {
     int iconGX = Constants::HUD_LEFT_MARGIN + Constants::COIN_RADIUS_CELLS + 1;
     int iconGY = Constants::HUD_TOP_MARGIN  + Constants::COIN_RADIUS_CELLS;
@@ -756,7 +774,7 @@ void MainWindow::drawHUDCoins(QPainter& p) {
     plotGridPixel(p, iconGX-1, iconGY-Constants::COIN_RADIUS_CELLS+1, QColor(255,255,220));
     QFont f; f.setFamily("Monospace"); f.setBold(true); f.setPointSize(12);
     p.setFont(f);
-    p.setPen(QColor(20,14,24));
+    p.setPen(Constants::TEXT_COLOR[level_index]);
     int px = (Constants::HUD_LEFT_MARGIN + Constants::COIN_RADIUS_CELLS*2 + 3) * Constants::PIXEL_SIZE;
     int py = (Constants::HUD_TOP_MARGIN  + Constants::COIN_RADIUS_CELLS + 2) * Constants::PIXEL_SIZE;
     p.drawText(px, py, QString::number(m_coinCount));
@@ -767,12 +785,28 @@ void MainWindow::drawHUDDistance(QPainter& p) {
     QString s = QString::number(meters, 'f', 1) + " m";
     QFont f; f.setFamily("Monospace"); f.setBold(true); f.setPointSize(12);
     p.setFont(f);
-    p.setPen(QColor(20,14,24));
+    p.setPen(Constants::TEXT_COLOR[level_index]);
     QFontMetrics fm(f);
     int px = width() - fm.horizontalAdvance(s) - 12;
     int py = (Constants::HUD_TOP_MARGIN + Constants::COIN_RADIUS_CELLS + 2) * Constants::PIXEL_SIZE;
     p.drawText(px, py, s);
 }
+
+
+void MainWindow::drawHUDScore(QPainter& p) {
+    const QString s = QString::number(m_score);
+    QFont f; f.setFamily("Monospace"); f.setBold(true); f.setPointSize(12);
+    p.setFont(f);
+    p.setPen(Constants::TEXT_COLOR[level_index]);
+    QFontMetrics fm(f);
+    const int rightPadPx = 12;
+    const int px = width() - fm.horizontalAdvance(s) - rightPadPx;
+    const int distancePy = (Constants::HUD_TOP_MARGIN + Constants::COIN_RADIUS_CELLS + 2) * Constants::PIXEL_SIZE;
+    const int gapPx = 8;
+    const int py = distancePy - fm.height() - gapPx;
+    p.drawText(px, py, s);
+}
+
 
 int MainWindow::groundGyNearestGX(int gx) const {
     auto it = m_heightAtGX.constFind(gx);
@@ -796,6 +830,7 @@ double MainWindow::terrainTangentAngleAtX(double wx) const {
 }
 
 void MainWindow::showGameOver() {
+    if (m_media) m_media->playGameOverOnce();
     if (m_outro) return;
     if (m_timer) m_timer->stop();
 

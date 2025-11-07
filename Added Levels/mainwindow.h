@@ -58,6 +58,7 @@ private:
     void drawHUDFuel(QPainter& p);
     void drawHUDCoins(QPainter& p);
     void drawHUDDistance(QPainter& p);
+    void drawHUDScore(QPainter& p);
 
     QColor grassShadeForBlock(int worldGX, int worldGY, bool greenify) const;
     static inline quint32 hash2D(int x, int y) {

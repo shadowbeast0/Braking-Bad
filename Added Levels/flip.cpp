@@ -3,8 +3,13 @@
 #include <QtMath>
 #include <algorithm>
 
-static inline int gx_from_px(int px){ return px / Constants::PIXEL_SIZE; }
-static inline int gy_from_px(int py){ return py / Constants::PIXEL_SIZE; }
+static inline int gx_from_px(int px){
+    return px / Constants::PIXEL_SIZE;
+}
+
+static inline int gy_from_px(int py){
+    return py / Constants::PIXEL_SIZE;
+}
 
 void FlipTracker::update(double angleRad, double carX, double carY, double nowSec, const std::function<void(int)>& onAward)
 {
@@ -41,26 +46,21 @@ void FlipTracker::update(double angleRad, double carX, double carY, double nowSe
     }
 }
 
-// === HUD ===
-// Renders: "Flips: N" aligned with the HUD ICONS' left edge.
-void FlipTracker::drawHUD(QPainter& p) const
+
+void FlipTracker::drawHUD(QPainter& p, int levelIndex) const
 {
-    // Coin icon center: HUD_LEFT_MARGIN + COIN_RADIUS_CELLS + 1
-    // -> icon's leftmost X = (center - radius) = HUD_LEFT_MARGIN + 1  (see mainwindow.cpp drawHUDCoins)
     const int textGX = Constants::HUD_LEFT_MARGIN + 1;
-
-    // Vertical placement: one text row + extra gap below nitro HUD.
     const int nitroBaselineGY = Constants::HUD_TOP_MARGIN + Constants::COIN_RADIUS_CELLS*2 + 4;
-    const int extraGapCells   = 10;
-    const int textGY          = nitroBaselineGY + 7 + extraGapCells;
-
+    const int extraGapCells = 10;
+    const int textGY = nitroBaselineGY + 7 + extraGapCells;
     QFont f; f.setFamily("Monospace"); f.setBold(true); f.setPointSize(12);
     p.setFont(f);
-    p.setPen(QColor(20,14,24));
+    p.setPen(Constants::TEXT_COLOR[levelIndex]);
     p.drawText(textGX * Constants::PIXEL_SIZE,
                textGY  * Constants::PIXEL_SIZE,
                QString("Flips: %1").arg(total()));
 }
+
 
 // === Popup ===
 void FlipTracker::drawPixelWordFlip(QPainter& p, int gx, int gy, int cell, const QColor& c)
