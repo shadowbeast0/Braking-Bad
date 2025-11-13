@@ -116,10 +116,9 @@ private:
     int   m_lastY = 0;
     float m_slope = 0.0f;
 
-    const int   m_step = 20;
-    float       m_difficulty = 0.005f;
-    const float m_difficultyIncrement = 0.0001f;
-    const float m_irregularity = 0.02f;
+    double m_difficulty;
+    double m_irregularity;
+    double m_terrain_height;
 
     int m_cameraX = 0;
     int m_cameraY = 200;

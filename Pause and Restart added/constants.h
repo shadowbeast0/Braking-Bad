@@ -8,13 +8,22 @@
 
 struct Constants {
     // LEVEL MECHANICS
-    inline static QVector<double> GRAVITY           = {0.08, 0.08, 0.08, 0.02, 0.05};
+    inline static QVector<double> GRAVITY           = {0.08, 0.08, 0.08, 0.04, 0.06};
     inline static QVector<double> AIR_RESISTANCE    = {0.0005, 0.0003, 0.0007, 0.00001, 0.00005};
     inline static QVector<double> RESTITUTION       = {0.8, 0.5, 0.8, 0.7, 0.07};
-    inline static QVector<double> FRICTION          = {0.003, 0.03, 0.0003, 0.001, 0,03};
-    inline static QVector<double> TRACTION          = {1, 1.25, 0.75, 0.5, 0.75};
+    inline static QVector<double> FRICTION          = {0.003, 0.03, 0.0001, 0.001, 0,03};
+    inline static QVector<double> TRACTION          = {1, 1.25, 0.5, 0.5, 0.75};
     inline static QVector<double> CLOUD_PROBABILITY = {0.5, 0.1, 0.7, 0, 0.05};
     inline static QVector<QColor> SKY_COLOR = {QColor(150,210,255), QColor(255,220,200), QColor(210,210,255), QColor(0,0,0), QColor(200, 150, 150)};
+    inline static QVector<QColor> CLOUD_COLOR = {QColor(255,255,255), QColor(255,255,200), QColor(255,255,255), QColor(0,0,0), QColor(255, 220, 200)};
+    inline static QVector<double> MAX_SLOPE = {1.0, 1.5, 0.8, 2, 1.5};
+    inline static QVector<double> INITIAL_DIFFICULTY = {0.005, 0.005, 0.008, 0.01, 0.008};
+    inline static QVector<double> DIFFICULTY_INCREMENT = {0.0001, 0.0002, 0.0001, 0.0003, 0.0002};
+    inline static QVector<double> INITIAL_IRREGULARITY = {0.01, 0.001, 0.01, 0.05, 0.02};
+    inline static QVector<double> IRREGULARITY_INCREMENT = {0.00001, 0.000001, 0.00003, 0.0001, 0.00005};
+    inline static QVector<double> INITIAL_TERRAIN_HEIGHT = {10, 10, 10, 20, 10};
+    inline static QVector<double> TERRAIN_HEIGHT_INCREMENT = {0.001, 0.002, 0.001, 0.002, 0.002};
+    static constexpr int STEP = 20;
 
     //CAR MECHANICS
     static constexpr double MAX_VELOCITY    = 30.0;
@@ -56,7 +65,7 @@ struct Constants {
     static constexpr int COIN_PICKUP_RADIUS      = 28;
     static constexpr int COIN_FLOOR_OFFSET_CELLS = 6;
     static constexpr int COIN_GROUP_MIN         = 5;
-    static constexpr int COIN_GROUP_MAX         = 16;
+    static constexpr int COIN_GROUP_MAX         = 10;
     static constexpr int COIN_GROUP_STEP_MIN    = 9;
     static constexpr int COIN_GROUP_STEP_MAX    = 13;
     static constexpr int COIN_SPAWN_MARGIN_CELLS= 24;

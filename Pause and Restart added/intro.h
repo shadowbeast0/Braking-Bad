@@ -11,6 +11,7 @@
 #include "line.h"
 #include "constants.h"
 #include <QSettings>
+#include <random>
 
 class QPainter;
 class QMouseEvent;
@@ -97,6 +98,8 @@ private:
     static constexpr int CLOUD_MIN_H_CELLS = 3;
     static constexpr int CLOUD_MAX_H_CELLS = 7;
     static constexpr int CLOUD_SKY_OFFSET_CELLS = 40;
+
+    std::mt19937 m_rng;
 
     static constexpr int CHAR_ADV = 7;
 

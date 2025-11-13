@@ -12,6 +12,9 @@ constexpr int TITLE_STAGE_GAP_PX = 30;
 IntroScreen::IntroScreen(QWidget* parent, int levelIndex) : QWidget(parent) {
     setAttribute(Qt::WA_OpaquePaintEvent);
 
+    levels_unlocked = {true, true, true, true, true};
+    saveUnlocks();
+
     level_index = levelIndex;
 
     connect(&m_timer, &QTimer::timeout, this, [this]{
@@ -96,6 +99,7 @@ int IntroScreen::exitTopCells(int btnHCells) const {
 
 void IntroScreen::maybeSpawnCloud() {
     if (m_lastX - m_lastCloudSpawnX < CLOUD_SPACING_PX) return;
+    //if (m_dist(m_rng) > Constants::CLOUD_PROBABILITY[level_index]) return;
 
     int gx = m_lastX / PIXEL_SIZE;
     auto it = m_heightAtGX.constFind(gx);
@@ -157,8 +161,9 @@ void IntroScreen::drawClouds(QPainter& p) {
                 double fuzz = (h % 100) / 400.0;
 
                 if (r2 <= 1.0 + fuzz) {
-                    QColor cMain(255,255,255);
-                    QColor cSoft(240,240,240);
+                    QColor cMain = Constants::CLOUD_COLOR[level_index];
+                    QColor cSoft(cMain.red() * 0.9, cMain.green() * 0.9,
+                                 cMain.blue() * 0.9);
                     QColor pix = ((h >> 3) & 1) ? cMain : cSoft;
                     plotGridPixel(p, baseGX + xx, baseGY + yy, pix);
                 }
@@ -236,7 +241,7 @@ void IntroScreen::paintEvent(QPaintEvent*) {
     int labelGY = iconGY - (7*scale)/3;
     drawPixelText(p, total, labelGX, labelGY, (double)scale, Constants::TEXT_COLOR[level_index], false);
 
-    const QString title = "Need 4 Speed";
+    const QString title = "Drink N Drive";
     int ts = titleScale();
     int titleWCells = textWidthCells(title, ts);
     int tgx = (gridW() - titleWCells) / 2;
