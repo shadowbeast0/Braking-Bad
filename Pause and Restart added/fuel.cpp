@@ -9,8 +9,10 @@ int FuelSystem::currentFuelSpacing(double difficulty, double elapsedSeconds) con
     int spacing = base + byDiff + byTime;
     spacing     = int(std::round(spacing * Constants::FUEL_SPAWN_EASE));
 
-    int minSpacing = int(std::round(450 * Constants::FUEL_SPAWN_EASE));
+    int minSpacing = int(std::round(10000 * Constants::FUEL_SPAWN_EASE));
+    int maxSpacing = int(std::round(200000 * Constants::FUEL_SPAWN_EASE));
     if (spacing < minSpacing) spacing = minSpacing;
+    if (spacing > maxSpacing) spacing = maxSpacing;
 
     return spacing;
 }

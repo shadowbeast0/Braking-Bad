@@ -39,48 +39,8 @@ MainWindow::MainWindow(QWidget *parent)
     m_media->setupBgm();
     m_media->setBgmVolume(0.35);
     m_media->playBgm();
-    generateInitialTerrain();
 
-    Wheel* w1 = new Wheel(100, 300, 20);
-    Wheel* w2 = new Wheel(220, 300, 20);
-    Wheel* w3 = new Wheel(160, 300, 0);
-    w1->attach(w3);
-    w2->attach(w3);
-    w1->attach(w2);
-    m_wheels.append(w1);
-    m_wheels.append(w2);
-    m_wheels.append(w3);
-
-    CarBody* body = new CarBody();
-
-    auto bodyPoints = QVector<QPoint>{QPoint(0,0), QPoint(0,31), QPoint(9,37), QPoint(15,19), QPoint(44,19), QPoint(50,37), QPoint(138,37), QPoint(144,19), QPoint(172,19), QPoint(179,37), QPoint(188,31), QPoint(181,6), QPoint(137,0), QPoint(112,-25), QPoint(62,-25), QPoint(37,-6), QPoint(25,-7), QPoint(19,-19), QPoint(4,-21), QPoint(1,-15), QPoint(12, -10)};
-    body->addPoints(bodyPoints);
-
-    auto hitboxPoints = QVector<QPoint>{QPoint(15,6), QPoint(173, 1),  QPoint(137,0), QPoint(112,-25), QPoint(62,-25), QPoint(37,-6), QPoint(25,-7), QPoint(19,-19), QPoint(4,-21), QPoint(1,-15), QPoint(12, -10)};
-    body->addHitbox(hitboxPoints);
-
-    auto killPoints = QVector<QPoint>{QPoint(112, -25), QPoint(62, -25)};
-    body->addKillSwitches(killPoints);
-
-    body->addWheel(w1);
-    body->addWheel(w2);
-    body->addWheel(w3);
-
-    QColor winC(120,170,220);
-    QColor handleC(20,20,24);
-
-    QVector<QPoint> glassWin{
-        QPoint(48, 0), QPoint(68, -14), QPoint(105, -14), QPoint(112, -1), QPoint(110, 0)
-    };
-
-    QVector<QPoint> handle{
-        QPoint(96, 10), QPoint(102, 10), QPoint(102, 13), QPoint(96, 13)
-    };
-
-    body->addAttachment(glassWin,  winC);
-    body->addAttachment(handle, handleC);
-    body->finish();
-    m_bodies.append(body);
+    loadGrandCoins();
 
     m_timer = new QTimer(this);
     connect(m_timer, &QTimer::timeout, this, &MainWindow::gameLoop);
@@ -127,17 +87,19 @@ void MainWindow::resizeEvent(QResizeEvent *e) {
 
 void MainWindow::generateInitialTerrain() {
     m_lastY = height() / 2;
-    for (int i = m_step; i <= width() + m_step; i += m_step) {
-        m_slope += (m_dist(m_rng) - static_cast<float>(m_lastY) / height()) * m_difficulty;
-        m_slope = std::clamp(m_slope, -1.0f, 1.0f);
-        const int newY = m_lastY + std::lround(m_slope * std::pow(std::abs(m_slope), m_irregularity) * m_step);
-        Line seg(i - m_step, m_lastY, i, newY);
+    for (int i = Constants::STEP; i <= width() + Constants::STEP; i += Constants::STEP) {
+        m_slope += (m_dist(m_rng) - (1 - m_terrain_height/100) * static_cast<float>(m_lastY) / height()) * m_difficulty;
+        m_slope = std::clamp(m_slope, -(float)Constants::MAX_SLOPE[level_index], (float)Constants::MAX_SLOPE[level_index]);
+        const int newY = m_lastY + std::lround(m_slope * std::pow(std::abs(m_slope), m_irregularity) * Constants::STEP);
+        Line seg(i - Constants::STEP, m_lastY, i, newY);
         m_lines.append(seg);
         rasterizeSegmentToHeightMapWorld(seg.getX1(), m_lastY, seg.getX2(), newY);
         m_lastY = newY;
-        m_difficulty += m_difficultyIncrement;
+        m_difficulty += Constants::DIFFICULTY_INCREMENT[level_index];
+        m_irregularity += Constants::IRREGULARITY_INCREMENT[level_index];
+        if(m_terrain_height < 0.5) m_terrain_height += Constants::TERRAIN_HEIGHT_INCREMENT[level_index];
     }
-    m_lastX = m_step * m_lines.size();
+    m_lastX = Constants::STEP * m_lines.size();
 }
 
 void MainWindow::gameLoop() {
@@ -181,34 +143,15 @@ void MainWindow::gameLoop() {
     double carX = (!m_bodies.isEmpty()) ? m_bodies.first()->getX() : avgX;
     double carY = (!m_bodies.isEmpty()) ? m_bodies.first()->getY() : avgY;
 
-    m_flip.update(angleRad, carX, carY, m_elapsedSeconds,
-                  [this](int bonus){ m_coinCount += bonus; });  // +50 per flip
+    m_flip.update(angleRad, carX, carY, m_elapsedSeconds, [this](int bonus){ m_coinCount += bonus; });  // +50 per flip
 
-    while (targetX > m_cameraXFarthest) {
-        m_cameraXFarthest += m_step;
-        m_slope += (m_dist(m_rng) - static_cast<float>(m_lastY) / height()) * m_difficulty;
-        m_slope = std::clamp(m_slope, -1.0f, 1.0f);
-        const int newY = m_lastY + std::lround(m_slope * std::pow(std::abs(m_slope), m_irregularity) * m_step);
-        Line seg(m_lastX, m_lastY, m_lastX + m_step, newY);
-        m_lines.append(seg);
-        rasterizeSegmentToHeightMapWorld(seg.getX1(), m_lastY, seg.getX2(), newY);
-        m_lastY = newY;
-        m_lastX += m_step;
-        if (m_lines.size() > (width() / m_step) * 3) { m_lines.removeFirst(); pruneHeightMap(); }
-        m_difficulty += m_difficultyIncrement;
+    const int viewRightX = m_cameraX + width();
+    const int marginPx   = Constants::COIN_SPAWN_MARGIN_CELLS * Constants::PIXEL_SIZE;
+    const int offRightX  = viewRightX + marginPx;
+    const int maxStreamWidthPx =
+        (Constants::COIN_GROUP_MAX - 1) * Constants::COIN_GROUP_STEP_MAX * Constants::PIXEL_SIZE;
+    ensureAheadTerrain(offRightX + maxStreamWidthPx + Constants::PIXEL_SIZE * 20);
 
-        m_fuelSys.maybePlaceFuelAtEdge(m_lastX, m_heightAtGX, m_difficulty, m_elapsedSeconds);
-        maybeSpawnCloud();
-    }
-
-    {
-        const int viewRightX = m_cameraX + width();
-        const int marginPx   = Constants::COIN_SPAWN_MARGIN_CELLS * Constants::PIXEL_SIZE;
-        const int offRightX  = viewRightX + marginPx;
-        const int maxStreamWidthPx =
-            (Constants::COIN_GROUP_MAX - 1) * Constants::COIN_GROUP_STEP_MAX * Constants::PIXEL_SIZE;
-        ensureAheadTerrain(offRightX + maxStreamWidthPx + Constants::PIXEL_SIZE * 20);
-    }
     m_coinSys.maybePlaceCoinStreamAtEdge(
         m_elapsedSeconds, m_cameraX, width(), m_heightAtGX, m_lastX, m_rng, m_dist);
 
@@ -622,21 +565,23 @@ double MainWindow::averageSpeed() const {
 
 void MainWindow::ensureAheadTerrain(int worldX) {
     while (m_lastX < worldX) {
-        m_slope += (m_dist(m_rng) - static_cast<float>(m_lastY) / height()) * m_difficulty;
+        m_slope += (m_dist(m_rng) - (1 - m_terrain_height/100) * static_cast<float>(m_lastY) / height()) * m_difficulty;
         m_slope = std::clamp(m_slope, -1.0f, 1.0f);
 
-        const int newY = m_lastY + std::lround(m_slope * std::pow(std::abs(m_slope), m_irregularity) * m_step);
+        const int newY = m_lastY + std::lround(m_slope * std::pow(std::abs(m_slope), m_irregularity) * Constants::STEP);
 
-        Line seg(m_lastX, m_lastY, m_lastX + m_step, newY);
+        Line seg(m_lastX, m_lastY, m_lastX + Constants::STEP, newY);
         m_lines.append(seg);
         rasterizeSegmentToHeightMapWorld(seg.getX1(), m_lastY, seg.getX2(), newY);
 
         m_lastY = newY;
-        m_lastX += m_step;
+        m_lastX += Constants::STEP;
 
-        if (m_lines.size() > (width() / m_step) * 3) { m_lines.removeFirst(); pruneHeightMap(); }
+        if (m_lines.size() > (width() / Constants::STEP) * 3) { m_lines.removeFirst(); pruneHeightMap(); }
 
-        m_difficulty += m_difficultyIncrement;
+        m_difficulty += Constants::DIFFICULTY_INCREMENT[level_index];
+        m_irregularity += Constants::IRREGULARITY_INCREMENT[level_index];
+        if(m_terrain_height < 0.5) m_terrain_height += Constants::TERRAIN_HEIGHT_INCREMENT[level_index];
         m_fuelSys.maybePlaceFuelAtEdge(m_lastX, m_heightAtGX, m_difficulty, m_elapsedSeconds);
         maybeSpawnCloud();
     }
@@ -700,8 +645,8 @@ void MainWindow::drawClouds(QPainter& p) {
                 double fuzz = (h % 100) / 400.0;
 
                 if (r2 <= 1.0 + fuzz) {
-                    QColor cMain(255,255,255);
-                    QColor cSoft(240,240,240);
+                    QColor cMain = Constants::CLOUD_COLOR[level_index];
+                    QColor cSoft(cMain.red()*0.9,cMain.green()*0.9,cMain.blue()*0.9);
                     QColor pix = ((h >> 3) & 1) ? cMain : cSoft;
                     plotGridPixelLocal(baseGX + xx, baseGY + yy, pix);
                 }
@@ -945,9 +890,9 @@ void MainWindow::showGameOver() {
             m_outro->deleteLater();
             m_outro = nullptr;
         }
-
-        m_grandTotalCoins +=m_coinCount;
+        m_grandTotalCoins += m_coinCount;
         saveGrandCoins();
+
         resetGameRound();
         m_pause->hide();
         m_roofCrashLatched = false;
@@ -1061,7 +1006,12 @@ void MainWindow::resetGameRound() {
 
     m_lines.clear();
     m_heightAtGX.clear();
-    m_lastX = 0; m_lastY = 0; m_slope = 0.0f; m_difficulty = 0.005f;
+    m_lastX = 0;
+    m_lastY = 0;
+    m_slope = 0;
+    m_difficulty = Constants::INITIAL_DIFFICULTY[level_index];
+    m_irregularity = Constants::INITIAL_IRREGULARITY[level_index];
+    m_terrain_height = Constants::INITIAL_TERRAIN_HEIGHT[level_index];
     generateInitialTerrain();
 
     m_clouds.clear();
