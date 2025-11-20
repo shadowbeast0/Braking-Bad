@@ -40,6 +40,22 @@ MainWindow::MainWindow(QWidget *parent)
     m_media->setBgmVolume(0.35);
     m_media->playBgm();
 
+    m_leaderboardMgr = new LeaderboardManager(this);
+    m_leaderboardWidget = new LeaderboardWidget(this);
+    m_leaderboardWidget->setGeometry(rect());
+    m_leaderboardWidget->hide();
+
+    connect(m_leaderboardMgr, &LeaderboardManager::leaderboardUpdated,
+            m_leaderboardWidget, &LeaderboardWidget::setEntries);
+
+    connect(m_leaderboardWidget, &LeaderboardWidget::closed, this, [this]{
+        // Resume game when leaderboard is closed (if we were in-game)
+        if (m_timer && !m_intro && !m_outro) {
+            m_timer->start();
+        }
+        setFocus();
+    });
+
     loadGrandCoins();
 
     m_timer = new QTimer(this);
@@ -88,6 +104,7 @@ void MainWindow::resizeEvent(QResizeEvent *e) {
     QWidget::resizeEvent(e);
     if (m_intro) m_intro->setGeometry(rect());
     if (m_pause) m_pause->setGeometry(rect());
+    if (m_leaderboardWidget) m_leaderboardWidget->setGeometry(rect());
 }
 
 
@@ -527,6 +544,18 @@ void MainWindow::keyPressEvent(QKeyEvent *event) {
         case Qt::Key_Escape:
             close();
             break;
+        case Qt::Key_S:
+            if (m_leaderboardWidget && m_leaderboardMgr) {
+                if (m_timer && m_timer->isActive()) {
+                    m_timer->stop(); // pause game while viewing leaderboard
+                }
+                m_leaderboardWidget->setGeometry(rect());
+                m_leaderboardWidget->show();
+                m_leaderboardWidget->raise();
+                m_leaderboardWidget->setFocus();
+                m_leaderboardMgr->refreshLeaderboard(); // fetch latest
+            }
+            break;
         default:
             QWidget::keyPressEvent(event);
     }
@@ -898,6 +927,13 @@ double MainWindow::terrainTangentAngleAtX(double wx) const {
 
 void MainWindow::showGameOver() {
     if (m_media) m_media->playGameOverOnce();
+    if (m_leaderboardMgr) {
+        QString stageName = QStringLiteral("UNKNOWN");
+        if (level_index >= 0 && level_index < m_levelNames.size()) {
+            stageName = m_levelNames[level_index];
+        }
+        m_leaderboardMgr->submitScore(stageName, m_score);
+    }
     if (m_outro) return;
     if (m_timer) m_timer->stop();
 

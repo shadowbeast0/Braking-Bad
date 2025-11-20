@@ -24,6 +24,7 @@
 #include "keylog.h"
 #include "pause.h"
 #include "prop.h"
+#include "scoreboard.h"
 
 class QKeyEvent;
 class QPainter;
@@ -104,6 +105,8 @@ private:
 
     void saveGrandCoins() const;
     void loadGrandCoins();
+    LeaderboardManager* m_leaderboardMgr   = nullptr;
+    LeaderboardWidget*  m_leaderboardWidget = nullptr;
 
 private:
     QTimer *m_timer = nullptr;
