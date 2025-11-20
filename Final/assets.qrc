@@ -1,0 +1,18 @@
+<RCC>
+  <qresource prefix="/audio">
+    <file alias="bgm.mp3">assets/audio/bgm.mp3</file>
+    <file alias="bgm_meadow.mp3">assets/audio/bgm.mp3</file>
+    <file alias="bgm_desert.mp3">assets/audio/bgm_desert.mp3</file>
+    <file alias="bgm_tundra.mp3">assets/audio/bgm_tundra.mp3</file>
+    <file alias="bgm_lunar.mp3">assets/audio/bgm_lunar.mp3</file>
+    <file alias="bgm_martian.mp3">assets/audio/bgm_martian.mp3</file>
+    <file alias="bgm_nightlife.mp3">assets/audio/bgm_nightlife.mp3</file>
+  </qresource>
+  <qresource prefix="/sfx">
+    <file alias="accelerate.wav">assets/audio/accelerate.wav</file>
+    <file alias="nitro.wav">assets/audio/nitro.wav</file>
+    <file alias="coin.mp3">assets/audio/coin.mp3</file>
+    <file alias="fuel.mp3">assets/audio/fuel.mp3</file>
+    <file alias="gameOver.mp3">assets/audio/gameOver.mp3</file>
+  </qresource>
+</RCC>
