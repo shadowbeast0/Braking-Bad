@@ -92,6 +92,7 @@ void MainWindow::resizeEvent(QResizeEvent *e) {
 
 
 void MainWindow::generateInitialTerrain() {
+    int currentWorldX= m_lastX;
     m_lastY = height() / 2;
     for (int i = Constants::STEP; i <= width() + Constants::STEP; i += Constants::STEP) {
         m_slope += (m_dist(m_rng) - (1 - m_terrain_height/100) * static_cast<float>(m_lastY) / height()) * m_difficulty;
@@ -717,7 +718,7 @@ void MainWindow::drawHUDFuel(QPainter& p) {
         return QColor(r,g,b);
     };
 
-    QColor startC(40,230,55), midC(250,230,80), endC(230,50,40);
+    QColor startC(230,50,40), midC(250,230,80), endC(40,230,55);
 
     for (int x=0; x<wcells; ++x)
         for (int y=0; y<barH; ++y)
