@@ -1,4 +1,3 @@
-
 #include "mainwindow.h"
 #include "coin.h"
 #include "outro.h"
@@ -111,24 +110,54 @@ void MainWindow::resizeEvent(QResizeEvent *e) {
 void MainWindow::generateInitialTerrain() {
     int currentWorldX= m_lastX;
     m_lastY = height() / 2;
+
     for (int i = Constants::STEP; i <= width() + Constants::STEP; i += Constants::STEP) {
+
         m_slope += (m_dist(m_rng) - (1 - m_terrain_height/100) * static_cast<float>(m_lastY) / height()) * m_difficulty;
         m_slope = std::clamp(m_slope, -(float)Constants::MAX_SLOPE[level_index], (float)Constants::MAX_SLOPE[level_index]);
         const int newY = m_lastY + std::lround(m_slope * std::pow(std::abs(m_slope), m_irregularity) * Constants::STEP);
+
         Line seg(i - Constants::STEP, m_lastY, i, newY);
         m_lines.append(seg);
         rasterizeSegmentToHeightMapWorld(seg.getX1(), m_lastY, seg.getX2(), newY);
+
         int midX = seg.getX1();
         int groundGy = groundGyNearestGX(midX / Constants::PIXEL_SIZE); 
         m_propSys.maybeSpawnProp(currentWorldX, groundGy, level_index, m_slope, m_rng);
 
         m_lastY = newY;
+        m_lastX = i;
+
         m_difficulty += Constants::DIFFICULTY_INCREMENT[level_index];
         m_irregularity += Constants::IRREGULARITY_INCREMENT[level_index];
         if(m_terrain_height < 0.5) m_terrain_height += Constants::TERRAIN_HEIGHT_INCREMENT[level_index];
     }
     m_lastX = Constants::STEP * m_lines.size();
 }
+
+
+void MainWindow::createCar() {
+    Wheel* w1 = new Wheel(Constants::WHEEL_REAR_X,  Constants::WHEEL_REAR_Y,  Constants::WHEEL_REAR_R);
+    Wheel* w2 = new Wheel(Constants::WHEEL_FRONT_X, Constants::WHEEL_FRONT_Y, Constants::WHEEL_FRONT_R);
+    Wheel* w3 = new Wheel(Constants::WHEEL_MID_X,   Constants::WHEEL_MID_Y,   Constants::WHEEL_MID_R);
+
+    w1->attach(w2); w1->attach(w3); w2->attach(w3);
+    m_wheels.append(w1); m_wheels.append(w2); m_wheels.append(w3);
+
+    CarBody* body = new CarBody();
+    body->addPoints(Constants::CAR_BODY_POINTS);
+    body->addHitbox(Constants::CAR_HITBOX_POINTS);
+    body->addKillSwitches(Constants::CAR_KILL_POINTS);
+
+    body->addWheel(w1); body->addWheel(w2); body->addWheel(w3);
+
+    body->addAttachment(Constants::CAR_GLASS_POINTS, Constants::CAR_GLASS_COLOR);
+    body->addAttachment(Constants::CAR_HANDLE_POINTS, Constants::CAR_HANDLE_COLOR);
+
+    body->finish();
+    m_bodies.append(body);
+}
+
 
 void MainWindow::gameLoop() {
     const qint64 now = m_clock.nsecsElapsed();
@@ -318,6 +347,7 @@ void MainWindow::paintEvent(QPaintEvent *event) {
     p.translate(offX, offY);
 
     if (m_showGrid) { drawGridOverlay(p); }
+    drawStars(p);
     drawClouds(p);
     drawFilledTerrain(p);
     m_propSys.draw(p, m_cameraX, m_cameraY, width(), height(), m_heightAtGX);
@@ -660,6 +690,8 @@ void MainWindow::maybeSpawnCloud() {
 }
 
 void MainWindow::drawClouds(QPainter& p) {
+    if (Constants::CLOUD_PROBABILITY[level_index] <= 0.001) return;
+
     int camGX = m_cameraX / Constants::PIXEL_SIZE;
     int camGY = m_cameraY / Constants::PIXEL_SIZE;
 
@@ -685,6 +717,43 @@ void MainWindow::drawClouds(QPainter& p) {
                     QColor cSoft(cMain.red()*0.9,cMain.green()*0.9,cMain.blue()*0.9);
                     QColor pix = ((h >> 3) & 1) ? cMain : cSoft;
                     plotGridPixelLocal(baseGX + xx, baseGY + yy, pix);
+                }
+            }
+        }
+    }
+}
+
+void MainWindow::drawStars(QPainter& p) {
+    if (Constants::STAR_PROBABILITY[level_index] <= 0.001) return;
+
+    const int BLOCK = 20;
+    const int camGX = m_cameraX / Constants::PIXEL_SIZE;
+    const int camGY = m_cameraY / Constants::PIXEL_SIZE;
+
+    const int startBX = (camGX) / BLOCK - 1;
+    const int endBX   = (camGX + gridW()) / BLOCK + 1;
+    const int startBY = (-camGY) / BLOCK - 1;
+    const int endBY   = (-camGY + gridH()) / BLOCK + 1;
+
+    for (int bx = startBX; bx <= endBX; ++bx) {
+        for (int by = startBY; by <= endBY; ++by) {
+            quint32 h = hash2D(bx, by);
+            std::mt19937 rng(h);
+            std::uniform_real_distribution<float> fdist(0.0f, 1.0f);
+
+            if (fdist(rng) < Constants::STAR_PROBABILITY[level_index] * 0.4) {
+                std::uniform_int_distribution<int> idist(0, BLOCK - 1);
+                int wgx = bx * BLOCK + idist(rng);
+                int wgy = by * BLOCK + idist(rng);
+
+                int groundGy = groundGyNearestGX(wgx);
+                if (groundGy == 0 && !m_heightAtGX.contains(wgx)) groundGy = 10000;
+
+                if (wgy < groundGy - 8) {
+                    int sgx = wgx - camGX;
+                    int sgy = wgy + camGY;
+                    int alpha = std::uniform_int_distribution<int>(100, 255)(rng);
+                    plotGridPixel(p, sgx, sgy, QColor(255, 255, 255, alpha));
                 }
             }
         }
@@ -1096,27 +1165,7 @@ void MainWindow::resetGameRound() {
     qDeleteAll(m_wheels); m_wheels.clear();
     qDeleteAll(m_bodies); m_bodies.clear();
 
-    Wheel* w1 = new Wheel(100, 300, 20);
-    Wheel* w2 = new Wheel(220, 300, 20);
-    Wheel* w3 = new Wheel(160, 300, 0);
-    w1->attach(w2); w1->attach(w3); w2->attach(w3);
-    m_wheels.append(w1); m_wheels.append(w2); m_wheels.append(w3);
-
-    CarBody* body = new CarBody();
-    auto bodyPoints = QVector<QPoint>{QPoint(0,0), QPoint(0,31), QPoint(9,37), QPoint(15,19), QPoint(44,19), QPoint(50,37), QPoint(138,37), QPoint(144,19), QPoint(172,19), QPoint(179,37), QPoint(188,31), QPoint(181,6), QPoint(137,0), QPoint(112,-25), QPoint(62,-25), QPoint(37,-6), QPoint(25,-7), QPoint(19,-19), QPoint(4,-21), QPoint(1,-15), QPoint(12, -10)};
-    body->addPoints(bodyPoints);
-    auto hitboxPoints = QVector<QPoint>{QPoint(15,6), QPoint(173, 1),  QPoint(137,0), QPoint(112,-25), QPoint(62,-25), QPoint(37,-6), QPoint(25,-7), QPoint(19,-19), QPoint(4,-21), QPoint(1,-15), QPoint(12, -10)};
-    body->addHitbox(hitboxPoints);
-    auto killPoints  = QVector<QPoint>{QPoint(112, -25), QPoint(62, -25)};
-    body->addKillSwitches(killPoints);
-    body->addWheel(w1); body->addWheel(w2); body->addWheel(w3);
-    QColor winC(120,170,220), handleC(20,20,24);
-    QVector<QPoint> glassWin{ QPoint(48, 0), QPoint(68, -14), QPoint(105, -14), QPoint(112, -1), QPoint(110, 0) };
-    QVector<QPoint> handle  { QPoint(96, 10), QPoint(102, 10), QPoint(102, 13), QPoint(96, 13) };
-    body->addAttachment(glassWin, winC);
-    body->addAttachment(handle, handleC);
-    body->finish();
-    m_bodies.append(body);
+    createCar();
 
     m_totalDistanceCells = 0.0;
     m_score = 0;

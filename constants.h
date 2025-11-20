@@ -3,17 +3,23 @@
 
 #include <QColor>
 #include <QString>
+#include <QPoint>
 #include <QHash>
 #include <array>
 
 struct Constants {
+
+    static constexpr int PIXEL_SIZE = 6;
+    static constexpr int SHADING_BLOCK = 3;
+
     // LEVEL MECHANICS
     inline static QVector<double> GRAVITY           = {0.08, 0.08, 0.08, 0.04, 0.06, 0.08};
     inline static QVector<double> AIR_RESISTANCE    = {0.0005, 0.0003, 0.0007, 0.00001, 0.00005, 0.0007};
     inline static QVector<double> RESTITUTION       = {0.8, 0.5, 0.8, 0.7, 0.07, 0.5};
     inline static QVector<double> FRICTION          = {0.003, 0.03, 0.0001, 0.001, 0.03, 0.03};
     inline static QVector<double> TRACTION          = {1, 1.25, 0.5, 0.5, 0.75, 1.5};
-    inline static QVector<double> CLOUD_PROBABILITY = {0.5, 0.1, 0.7, 0, 0.05, 0.7};
+    inline static QVector<double> CLOUD_PROBABILITY = {0.5, 0.1, 0.7, 0, 0.05, 0};
+    inline static QVector<double> STAR_PROBABILITY = {0, 0, 0, 0.7, 0, 0.7};
     inline static QVector<QColor> SKY_COLOR = {QColor(150,210,255), QColor(255,220,200), QColor(210,210,255), QColor(0,0,0), QColor(200, 150, 150), QColor(30, 30, 40)};
     inline static QVector<QColor> CLOUD_COLOR = {QColor(255,255,255), QColor(255,255,200), QColor(255,255,255), QColor(0,0,0), QColor(255, 220, 200), QColor(50, 50, 25)};
     inline static QVector<double> MAX_SLOPE = {1.0, 1.5, 0.8, 2, 1.5, 0.5};
@@ -40,12 +46,35 @@ struct Constants {
     static constexpr QColor CAR_COLOR = QColor(200, 50, 50);
     static constexpr QColor WHEEL_COLOR_OUTER = QColor(40, 50, 60);
     static constexpr QColor WHEEL_COLOR_INNER = QColor(160, 165, 170);
-
+    static constexpr double WHEEL_REAR_X  = 100;
+    static constexpr double WHEEL_REAR_Y  = 300;
+    static constexpr double WHEEL_REAR_R  = 20;
+    static constexpr double WHEEL_FRONT_X = 220;
+    static constexpr double WHEEL_FRONT_Y = 300;
+    static constexpr double WHEEL_FRONT_R = 20;
+    static constexpr double WHEEL_MID_X   = 160;
+    static constexpr double WHEEL_MID_Y   = 300;
+    static constexpr double WHEEL_MID_R   = 0;
     static constexpr int TYRE_THICKNESS = 10;
 
-    static constexpr int PIXEL_SIZE = 6;
+    static constexpr QColor CAR_GLASS_COLOR  = QColor(120,170,220);
+    static constexpr QColor CAR_HANDLE_COLOR = QColor(20,20,24);
 
-    static constexpr int SHADING_BLOCK = 3;
+    inline static const QVector<QPoint> CAR_BODY_POINTS = {
+        QPoint(0,0), QPoint(0,31), QPoint(9,37), QPoint(15,19), QPoint(44,19),
+        QPoint(50,37), QPoint(138,37), QPoint(144,19), QPoint(172,19), QPoint(179,37),
+        QPoint(188,31), QPoint(181,6), QPoint(137,0), QPoint(112,-25), QPoint(62,-25),
+        QPoint(37,-6), QPoint(25,-7), QPoint(19,-19), QPoint(4,-21), QPoint(1,-15), QPoint(12, -10)
+    };
+
+    inline static const QVector<QPoint> CAR_HITBOX_POINTS = {
+        QPoint(15,6), QPoint(173, 1),  QPoint(137,0), QPoint(112,-25), QPoint(62,-25),
+        QPoint(37,-6), QPoint(25,-7), QPoint(19,-19), QPoint(4,-21), QPoint(1,-15), QPoint(12, -10)
+    };
+
+    inline static const QVector<QPoint> CAR_KILL_POINTS = {QPoint(112, -25), QPoint(62, -25)};
+    inline static const QVector<QPoint> CAR_GLASS_POINTS = {QPoint(48, 0), QPoint(68, -14), QPoint(105, -14), QPoint(112, -1), QPoint(110, 0)};
+    inline static const QVector<QPoint> CAR_HANDLE_POINTS = {QPoint(96, 10), QPoint(102, 10), QPoint(102, 13), QPoint(96, 13)};
 
     // HUD
     static constexpr int HUD_TOP_MARGIN  = 6;
