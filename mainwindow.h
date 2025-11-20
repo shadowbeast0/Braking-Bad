@@ -51,6 +51,7 @@ private:
     Media* m_media = nullptr;
     bool m_suppressFuelSfx = false;
     void generateInitialTerrain();
+    void createCar();
     void drawGridOverlay(QPainter& p);
     inline int gridW() const { return width()  / Constants::PIXEL_SIZE; }
     inline int gridH() const { return height() / Constants::PIXEL_SIZE; }
@@ -158,12 +159,21 @@ private:
 
     QVector<Cloud> m_clouds;
     int m_lastCloudSpawnX = 0;
-
     void maybeSpawnCloud();
     void drawClouds(QPainter& p);
 
-    IntroScreen* m_intro = nullptr;
+    struct Star {
+        int wx;
+        int wyCells;
+        int alpha;
+    };
 
+    QVector<Star> m_stars;
+    int m_lastStarSpawnX = 0;
+    void drawStars(QPainter& p);
+
+
+    IntroScreen* m_intro = nullptr;
     bool m_roofCrashLatched = false;
 
     double m_lastScoreX = 0.0;

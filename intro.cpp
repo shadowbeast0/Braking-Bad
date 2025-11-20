@@ -1,3 +1,4 @@
+// intro.cpp
 #include "intro.h"
 #include <QPainter>
 #include <QMouseEvent>
@@ -95,7 +96,9 @@ int IntroScreen::exitTopCells(int btnHCells) const {
 
 void IntroScreen::maybeSpawnCloud() {
     if (m_lastX - m_lastCloudSpawnX < CLOUD_SPACING_PX) return;
-    //if (m_dist(m_rng) > Constants::CLOUD_PROBABILITY[level_index]) return;
+
+    std::uniform_real_distribution<double> dist(0.0, 1.0);
+    if (dist(m_rng) > Constants::CLOUD_PROBABILITY[level_index]) return;
 
     int gx = m_lastX / PIXEL_SIZE;
     auto it = m_heightAtGX.constFind(gx);
@@ -133,6 +136,8 @@ void IntroScreen::maybeSpawnCloud() {
 }
 
 void IntroScreen::drawClouds(QPainter& p) {
+    if (Constants::CLOUD_PROBABILITY[level_index] <= 0.001) return;
+
     int camGX = m_camX / PIXEL_SIZE;
     int camGY = m_camY / PIXEL_SIZE;
 
@@ -162,6 +167,49 @@ void IntroScreen::drawClouds(QPainter& p) {
                                  cMain.blue() * 0.9);
                     QColor pix = ((h >> 3) & 1) ? cMain : cSoft;
                     plotGridPixel(p, baseGX + xx, baseGY + yy, pix);
+                }
+            }
+        }
+    }
+}
+
+void IntroScreen::drawStars(QPainter& p) {
+    if (Constants::STAR_PROBABILITY[level_index] <= 0.001) return;
+
+    const int BLOCK = 20;
+    const int camGX = m_camX / PIXEL_SIZE;
+    const int camGY = m_camY / PIXEL_SIZE;
+
+    const int startBX = (camGX) / BLOCK - 1;
+    const int endBX   = (camGX + gridW()) / BLOCK + 1;
+    const int startBY = (-camGY) / BLOCK - 1;
+    const int endBY   = (-camGY + gridH()) / BLOCK + 1;
+
+    for (int bx = startBX; bx <= endBX; ++bx) {
+        for (int by = startBY; by <= endBY; ++by) {
+            quint32 h = 120003212u;
+            h ^= quint32(bx); h *= 16777619u;
+            h ^= quint32(by); h *= 16777619u;
+            h = (h ^ bx) / (h ^ by) + (bx * by) - (3 * bx*bx + 4 * by*by);
+
+            std::mt19937 rng(h);
+            std::uniform_real_distribution<float> fdist(0.0f, 1.0f);
+
+            if (fdist(rng) < Constants::STAR_PROBABILITY[level_index] * 0.4) {
+                std::uniform_int_distribution<int> idist(0, BLOCK - 1);
+                int wgx = bx * BLOCK + idist(rng);
+                int wgy = by * BLOCK + idist(rng);
+
+                int groundGy = 0;
+                auto it = m_heightAtGX.constFind(wgx);
+                if (it != m_heightAtGX.constEnd()) groundGy = it.value();
+                else groundGy = 10000;
+
+                if (wgy < groundGy - 8) {
+                    int sgx = wgx - camGX;
+                    int sgy = wgy + camGY;
+                    int alpha = std::uniform_int_distribution<int>(100, 255)(rng);
+                    plotGridPixel(p, sgx, sgy, QColor(255, 255, 255, alpha));
                 }
             }
         }
@@ -272,7 +320,6 @@ void IntroScreen::paintEvent(QPaintEvent*) {
                   rLevelNext.top()/PIXEL_SIZE  + (rLevelNext.height()/PIXEL_SIZE - 7*nextScale)/2,
                   nextScale, QColor(25,20,24), false);
 
-    // Stage name (uses same geometry the helper replicates)
     QString levelName = m_levelNames[level_index];
     int levelScale = 2;
     int levelWCells = textWidthCells(levelName, levelScale);
@@ -284,9 +331,7 @@ void IntroScreen::paintEvent(QPaintEvent*) {
                   + stageGapCells;
 
     drawPixelText(p, levelName, levelGX, levelGY, levelScale, Constants::TEXT_COLOR[level_index], true);
-    // --- End selector ---
 
-    // Buttons (now anchored 5px below stage label)
     QRect rStart;
     QRect rExit  = buttonRectExit();
 
@@ -324,24 +369,19 @@ void IntroScreen::paintEvent(QPaintEvent*) {
         p.setBrush(QColor(100, 100, 110));
         p.drawRect(rStart);
 
-        // Draw text (e.g., "UNLOCK: 10")
+        // Draw text
         QString sStart = QString("UNLOCK: %1").arg(cost);
         int rStartWc = rStart.width()  / PIXEL_SIZE;
         int rStartHc = rStart.height() / PIXEL_SIZE;
 
-        // Fit text, but don't let it get TOO small
         int bsStart = fitTextScaleToRect(rStartWc, rStartHc, sStart);
 
         int sWCells = textWidthCells(sStart, bsStart);
         int sGX = rStart.left()/PIXEL_SIZE + (rStartWc - sWCells)/2;
         int sGY = rStart.top()/PIXEL_SIZE  + (rStartHc - 7*bsStart)/2;
-
-        // Text is white if affordable, red if not
         QColor textColor = canAfford ? QColor(20, 20, 20) : QColor(255, 80, 80);
         drawPixelText(p, sStart, sGX, sGY, bsStart, textColor, false);
     }
-
-    // --- END OF "PLAY" BUTTON MODIFICATION ---
 
     p.setBrush(QColor(0,0,0,160));
     p.drawRect(rExit.translated(3*PIXEL_SIZE,3*PIXEL_SIZE));
@@ -403,9 +443,7 @@ QRect IntroScreen::buttonRectLevelPrev() const {
     int wCells = hCells;
     const int stageGapCells = (TITLE_STAGE_GAP_PX + PIXEL_SIZE - 1) / PIXEL_SIZE;
 
-    int yCells = startTopCells(0) - hCells - std::max(10, gridH()/40)
-                 + stageGapCells;
-
+    int yCells = startTopCells(0) - hCells - std::max(10, gridH()/40) + stageGapCells;
 
     const int fixedOffset = 80;
     int gx = (gridW() / 2) - fixedOffset - wCells;
@@ -418,8 +456,7 @@ QRect IntroScreen::buttonRectLevelNext() const {
     int wCells = hCells;
     const int stageGapCells = (TITLE_STAGE_GAP_PX + PIXEL_SIZE - 1) / PIXEL_SIZE;
 
-    int yCells = startTopCells(0) - hCells - std::max(10, gridH()/40)
-                 + stageGapCells;               // <— was std::max(3, gridH()/40)
+    int yCells = startTopCells(0) - hCells - std::max(10, gridH()/40) + stageGapCells;
 
 
     const int fixedOffset = 80;
@@ -477,6 +514,7 @@ QRect IntroScreen::buttonRectUnlock() const{
 
 void IntroScreen::drawBackground(QPainter& p) {
     p.fillRect(rect(), Constants::SKY_COLOR[level_index]);
+    drawStars(p);
     drawClouds(p);
     drawFilledTerrain(p);
 }
@@ -497,38 +535,16 @@ void IntroScreen::drawFilledTerrain(QPainter& p) {
 
         for (int sGY = startScreenGY; sGY <= gridH(); ++sGY) {
             const int worldGY = sGY - camGY;
-            int depth = sGY - startScreenGY;
-
-            // === HIGHWAY LOGIC (Level 5) ===
-            if (level_index == 5) {
-                QColor c;
-                if (depth < 14) {
-                    // Top highlight
-                    if (depth == 0) c = QColor(80, 80, 85);
-                    // Dashed Yellow Line
-                    else if (depth >= 6 && depth <= 7 && (worldGX % 20 < 10)) {
-                        c = QColor(240, 190, 40);
-                    }
-                    // Asphalt
-                    else c = QColor(50, 50, 55);
-
-                    plotGridPixel(p, sgx, sGY, c);
-                    continue;
-                }
-            }
-            // ===============================
-
             bool topZone = (sGY < groundWorldGY + camGY + 3*SHADING_BLOCK);
             const QColor shade = grassShadeForBlock(worldGX, worldGY, topZone);
             plotGridPixel(p, sgx, sGY, shade);
         }
 
-        if (level_index != 5) {
-            const QColor edge = grassShadeForBlock(worldGX, groundWorldGY, true).darker(115);
-            plotGridPixel(p, sgx, groundWorldGY + camGY, edge);
-        }
+        const QColor edge = grassShadeForBlock(worldGX, groundWorldGY, true).darker(115);
+        plotGridPixel(p, sgx, groundWorldGY + camGY, edge);
     }
 }
+
 QColor IntroScreen::grassShadeForBlock(int worldGX, int worldGY, bool greenify) const {
     auto hash2D = [](int x, int y)->quint32{
         quint32 h = 120003212u;

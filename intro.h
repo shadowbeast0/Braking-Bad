@@ -41,6 +41,7 @@ protected:
     void resizeEvent(QResizeEvent*) override;
 
 private:
+    void drawStars(QPainter& p);
     void drawClouds(QPainter& p);
     void maybeSpawnCloud();
     void drawBackground(QPainter& p);
@@ -67,7 +68,6 @@ private:
     void saveGrandCoins() const;
     void loadGrandCoins();
 
-    // Stage label → bottom pixel helper (for precise 5px offset)
     int stageLabelBottomPx() const;
 
     // Grid helpers

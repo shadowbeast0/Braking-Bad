@@ -258,8 +258,32 @@ void CarBody::simulate(int level_index, const QVector<Line>& terrain, bool accel
             double dist = std::abs(m * x - y + b) / std::sqrt(m * m + 1);
             double intersectionx = (m * (y - b) + x) / (m * m + 1);
 
-            if (dist <= 3 && intersectionx >= line.getX1() - 1 && intersectionx <= line.getX2() + 1) {
-                kill();
+            if (dist <= 4 && intersectionx >= line.getX1() - 1 && intersectionx <= line.getX2() + 1) {
+
+                if (m_isAlive) kill();
+
+                double intersectiony = m * intersectionx + b;
+                double theta = -std::atan(m);
+
+                while (dist < 4) {
+                    m_cy -= std::cos(theta);
+                    m_cx -= std::sin(theta);
+                    int cur_x = static_cast<int>(std::round(m_cx + point.coords[0]));
+                    int cur_y = static_cast<int>(std::round(m_cy + point.coords[1]));
+                    dist = std::abs(m * cur_x - cur_y + b) / std::sqrt(m * m + 1);
+                }
+
+                double vAlongLine = m_vx * std::cos(theta) + m_vy * std::sin(theta);
+                double vNormalToLine = m_vy * std::cos(theta) - m_vx * std::sin(theta);
+
+                vNormalToLine = vNormalToLine * Constants::RESTITUTION[level_index] / (1 + std::exp(-vNormalToLine));
+                vAlongLine *= 1 - Constants::FRICTION[level_index];
+
+                m_vx = vAlongLine * std::cos(theta) - vNormalToLine * std::sin(theta);
+                m_vy = vAlongLine * std::sin(theta) + vNormalToLine * std::cos(theta);
+
+                double torque = 0.01 * ((intersectionx - m_cx) * std::sin(theta) - (intersectiony - m_cy) * std::cos(theta));
+                m_angle += 100 * torque;
             }
         }
     }

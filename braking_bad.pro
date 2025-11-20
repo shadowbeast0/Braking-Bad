@@ -23,7 +23,8 @@ HEADERS += \
     point.h \
     prop.h \
     wheel.h \
-    line.h
+    line.h \
+    scoreboard.h
 
 # List all source files here
 SOURCES += \
@@ -42,7 +43,9 @@ SOURCES += \
     point.cpp \
     prop.cpp \
     wheel.cpp \
-    line.cpp
+    line.cpp \
+    scoreboard.cpp
+
 FORMS += \
     mainwindow.ui
 

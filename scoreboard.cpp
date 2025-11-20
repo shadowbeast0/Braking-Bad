@@ -1,5 +1,4 @@
 #include "scoreboard.h"
-
 #include <QPainter>
 #include <QPaintEvent>
 #include <QKeyEvent>
@@ -7,21 +6,15 @@
 #include <QPalette>
 #include <QSysInfo>
 #include <QSettings>
+#include <algorithm>
 
-#include <algorithm>  // std::sort
-
-// ============================================================================
-// ScoreboardWidget implementation
-// ============================================================================
-
-LeaderboardWidget::LeaderboardWidget(QWidget* parent)
-    : QWidget(parent)
+LeaderboardWidget::LeaderboardWidget(QWidget* parent) : QWidget(parent)
 {
     setAttribute(Qt::WA_StyledBackground, true);
     setAutoFillBackground(true);
 
     QPalette pal = palette();
-    pal.setColor(QPalette::Window, QColor(0, 0, 0, 210)); // dark translucent
+    pal.setColor(QPalette::Window, QColor(0, 0, 0, 210));
     setPalette(pal);
 
     setFocusPolicy(Qt::StrongFocus);
@@ -41,8 +34,7 @@ void LeaderboardWidget::paintEvent(QPaintEvent* event)
     p.setRenderHint(QPainter::Antialiasing, false);
     p.setRenderHint(QPainter::TextAntialiasing, true);
 
-    const QRect panel = rect().adjusted(width() * 0.1, height() * 0.1,
-                                        -width() * 0.1, -height() * 0.1);
+    const QRect panel = rect().adjusted(width() * 0.1, height() * 0.1, -width() * 0.1, -height() * 0.1);
 
     // Panel background
     p.fillRect(panel, QColor(28, 24, 36, 240));
@@ -51,9 +43,9 @@ void LeaderboardWidget::paintEvent(QPaintEvent* event)
 
     // Title (pixel-style)
     QFont titleFont;
-    titleFont.setFamily("Monospace");        // or your pixel font family if you have one
+    titleFont.setFamily("Monospace");
     titleFont.setBold(true);
-    titleFont.setPixelSize(24);             // pixel size for crisp look
+    titleFont.setPixelSize(24);
     titleFont.setStyleStrategy(QFont::NoAntialias);
     p.setFont(titleFont);
     p.setPen(QColor(230, 230, 240));
@@ -88,7 +80,6 @@ void LeaderboardWidget::paintEvent(QPaintEvent* event)
     p.drawText(colStageX, headerY, QStringLiteral("STAGE"));
     p.drawText(colScoreX, headerY, QStringLiteral("BEST SCORE"));
 
-    // NOTE: device line removed completely
 
     // Separator line
     p.setPen(QColor(80, 70, 100));
@@ -115,8 +106,7 @@ void LeaderboardWidget::paintEvent(QPaintEvent* event)
 
         // Alternate row background
         if (i % 2 == 0) {
-            QRect rowRect(panel.left() + 10, y - rowHeight + 6,
-                          panel.width() - 20, rowHeight);
+            QRect rowRect(panel.left() + 10, y - rowHeight + 6, panel.width() - 20, rowHeight);
             p.fillRect(rowRect, QColor(40, 34, 50, 160));
         }
 
@@ -125,7 +115,7 @@ void LeaderboardWidget::paintEvent(QPaintEvent* event)
         p.drawText(colScoreX, y, QString::number(e.score));
 
         y += rowHeight;
-        if (y > panel.bottom() - 20) break; // stop if panel is full
+        if (y > panel.bottom() - 20) break;
     }
 
     // Hint footer
@@ -145,7 +135,7 @@ void LeaderboardWidget::paintEvent(QPaintEvent* event)
 
 void LeaderboardWidget::keyPressEvent(QKeyEvent* event)
 {
-    if (event->key() == Qt::Key_S || event->key() == Qt::Key_Escape) {
+    if (event->key() == Qt::Key_S || event->key() == Qt::Key_Escape || event->key() == Qt::Key_L) {
         hide();
         emit closed();
         return;
@@ -160,10 +150,6 @@ void LeaderboardWidget::mousePressEvent(QMouseEvent* event)
     emit closed();
 }
 
-// ============================================================================
-// LeaderboardManager implementation (LOCAL ONLY)
-// ============================================================================
-
 LeaderboardManager::LeaderboardManager(QObject* parent)
     : QObject(parent)
 {
@@ -172,7 +158,6 @@ LeaderboardManager::LeaderboardManager(QObject* parent)
 
 QString LeaderboardManager::deviceId() const
 {
-    // Use machine unique ID if available, otherwise hostname.
     QByteArray id = QSysInfo::machineUniqueId();
     if (!id.isEmpty())
         return QString::fromLatin1(id.toHex());
@@ -207,7 +192,6 @@ void LeaderboardManager::submitScore(const QString& stageName, int score)
         m_entries.push_back(e);
     }
 
-    // Sort by stage name, then descending score
     std::sort(m_entries.begin(), m_entries.end(),
               [](const LeaderboardEntry& a, const LeaderboardEntry& b) {
                   if (a.stageName == b.stageName)
@@ -221,7 +205,6 @@ void LeaderboardManager::submitScore(const QString& stageName, int score)
 
 void LeaderboardManager::refreshLeaderboard()
 {
-    // All data is local; just emit current snapshot.
     emit leaderboardUpdated(m_entries);
 }
 
