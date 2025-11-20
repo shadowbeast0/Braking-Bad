@@ -57,8 +57,8 @@ struct Constants {
     static constexpr double WHEEL_MID_R   = 0;
     static constexpr int TYRE_THICKNESS = 10;
 
-    static constexpr QColor CAR_GLASS_COLOR  = QColor(120,170,220);
-    static constexpr QColor CAR_HANDLE_COLOR = QColor(20,20,24);
+    static constexpr QColor CAR_GLASS_COLOR  = QColor(20,20,20);
+    static constexpr QColor CAR_HANDLE_COLOR = QColor(40,40,40);
 
     inline static const QVector<QPoint> CAR_BODY_POINTS = {
         QPoint(0,0), QPoint(0,31), QPoint(9,37), QPoint(15,19), QPoint(44,19),
@@ -73,7 +73,7 @@ struct Constants {
     };
 
     inline static const QVector<QPoint> CAR_KILL_POINTS = {QPoint(112, -25), QPoint(62, -25)};
-    inline static const QVector<QPoint> CAR_GLASS_POINTS = {QPoint(48, 0), QPoint(68, -14), QPoint(105, -14), QPoint(112, -1), QPoint(110, 0)};
+    inline static const QVector<QPoint> CAR_GLASS_POINTS = {QPoint(60, 6), QPoint(70, -18), QPoint(116, -18), QPoint(140, 6)};
     inline static const QVector<QPoint> CAR_HANDLE_POINTS = {QPoint(96, 10), QPoint(102, 10), QPoint(102, 13), QPoint(96, 13)};
 
     // HUD
