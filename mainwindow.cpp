@@ -309,7 +309,7 @@ void MainWindow::gameLoop() {
     }
 
     const bool fuelEmpty = (m_fuel <= 0.0);
-    const bool roofHit   = isRoofTouchingTerrain();
+    const bool roofHit   = !m_bodies[0]->isAlive();
 
     if (roofHit && !m_roofCrashLatched) {
         m_roofCrashLatched = true;
