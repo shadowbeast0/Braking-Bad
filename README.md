@@ -10,7 +10,6 @@
 **An infinite procedural driving game built from scratch using C++ and Qt.**
 *Features soft-body physics, dynamic terrain, 6 unique biomes, and a reactive audio system.*
 
-[View Demo](#) • [Report Bug](#) • [Request Feature](#)
 
 </div>
 
