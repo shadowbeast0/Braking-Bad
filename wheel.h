@@ -34,7 +34,7 @@ public:
 
     void kill();
     void updateV(double dvx, double dvy);
-    void updateR(double dx, double dy);
+    // void updateR(double dx, double dy);
 
 private:
     int m_radius;

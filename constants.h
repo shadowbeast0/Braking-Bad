@@ -68,8 +68,7 @@ struct Constants {
     };
 
     inline static const QVector<QPoint> CAR_HITBOX_POINTS = {
-        QPoint(15,6), QPoint(173, 1),  QPoint(137,0), QPoint(112,-25), QPoint(62,-25),
-        QPoint(37,-6), QPoint(25,-7), QPoint(19,-19), QPoint(4,-21), QPoint(1,-15), QPoint(12, -10)
+        QPoint(15,6), QPoint(173, 1),  QPoint(137,0), QPoint(1,-15), QPoint(12, -10)
     };
 
     inline static const QVector<QPoint> CAR_KILL_POINTS = {QPoint(112, -25), QPoint(62, -25)};

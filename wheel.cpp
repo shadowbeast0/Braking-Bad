@@ -42,10 +42,10 @@ double Wheel::getVy(){
     return m_vy;
 }
 
-void Wheel::updateR(double dx, double dy){
-    x+=dx;
-    y+=dy;
-}
+// void Wheel::updateR(double dx, double dy){
+//     x+=dx;
+//     y+=dy;
+// }
 
 void Wheel::updateV(double dvx, double dvy){
     m_vx+=dvx;
@@ -138,21 +138,30 @@ void Wheel::simulate(int level_index, const QList<Line>& lines, bool acceleratin
         if (nitro) {
             m_omega *= 1 - Constants::ANGULAR_DAMPING;
             if (std::abs(m_omega) < 1e-4) m_omega = 0.0;
+        } if (accelerating && braking) {
+            m_angle = std::atan2(other->getY() - this->getY(), other->getX() - this->getX());
+
+            if (std::abs(m_angle) > 1e-2) {
+                if (m_angle > 0) m_omega += Constants::ANGULAR_ACCELERATION;
+                else m_omega -= Constants::ANGULAR_DECELERATION;
+            }
+            m_omega *= 1 - Constants::ANGULAR_DAMPING;
+            if (std::abs(m_omega) < 1e-4) m_omega = 0.0;
         } else if (accelerating) {
-            m_omega -= Constants::ANGULAR_ACCELERATION;
-            if (m_omega < -Constants::MAX_ANGULAR_VELOCITY) m_omega = -Constants::MAX_ANGULAR_VELOCITY;
-        } else if (braking) {
-            m_omega += Constants::ANGULAR_DECELERATION;
+            m_omega += Constants::ANGULAR_ACCELERATION;
             if (m_omega >  Constants::MAX_ANGULAR_VELOCITY) m_omega =  Constants::MAX_ANGULAR_VELOCITY;
+        } else if (braking) {
+            m_omega -= Constants::ANGULAR_DECELERATION;
+            if (m_omega < -Constants::MAX_ANGULAR_VELOCITY) m_omega = -Constants::MAX_ANGULAR_VELOCITY;
         } else {
             m_omega *= 1 - Constants::ANGULAR_DAMPING;
             if (std::abs(m_omega) < 1e-4) m_omega = 0.0;
         }
 
         // integrate angle and wrap
-        m_angle += m_omega;
-        if (m_angle >  2 * M_PI) m_angle -= 2 * M_PI;
-        else if (m_angle < -2 * M_PI) m_angle += 2 * M_PI;
+        // m_angle += m_omega;
+        // if (m_angle >  M_PI) m_angle -= 2 * M_PI;
+        // else if (m_angle < -M_PI) m_angle += 2 * M_PI;
 
         // apply incremental rotation of the wheel pair about COM
         if (std::abs(m_omega) > 1e-6) {
@@ -167,11 +176,11 @@ void Wheel::simulate(int level_index, const QList<Line>& lines, bool acceleratin
             double sinA = std::sin(m_omega);
             double cosA = std::cos(m_omega);
 
-            double nx1 = rx1 * cosA - ry1 * sinA;
-            double ny1 = rx1 * sinA + ry1 * cosA;
+            double nx1 = rx1 * cosA + ry1 * sinA;
+            double ny1 = - rx1 * sinA + ry1 * cosA;
 
-            double nx2 = rx2 * cosA - ry2 * sinA;
-            double ny2 = rx2 * sinA + ry2 * cosA;
+            double nx2 = rx2 * cosA + ry2 * sinA;
+            double ny2 = - rx2 * sinA + ry2 * cosA;
 
             x = cx + nx1;
             y = cy + ny1;
@@ -199,10 +208,17 @@ void Wheel::simulate(int level_index, const QList<Line>& lines, bool acceleratin
         double forceX = unitX * springForceMagnitude;
         double forceY = unitY * springForceMagnitude;
 
-        double relativeVx = other->m_vx - m_vx;
-        double relativeVy = other->m_vy - m_vy;
-        double dampingForceX = relativeVx * Constants::DAMPING;
-        double dampingForceY = relativeVy * Constants::DAMPING;
+        // 2. Calculate relative velocity
+        double relativeVx = other->getVx() - m_vx;
+        double relativeVy = other->getVy() - m_vy;
+
+        // 3. Project relative velocity onto the spring axis (Dot Product)
+        // This isolates the component of velocity that is stretching/compressing the spring
+        double velocityAlongSpring = relativeVx * unitX + relativeVy * unitY;
+
+        // 4. Calculate damping force components based ONLY on that projection
+        double dampingForceX = velocityAlongSpring * unitX * Constants::DAMPING;
+        double dampingForceY = velocityAlongSpring * unitY * Constants::DAMPING;
 
         m_vx -= (forceX - dampingForceX);
         m_vy -= (forceY - dampingForceY);

@@ -186,9 +186,9 @@ void PropSystem::drawBuilding(QPainter& p, int gx, int gy, int worldGX, int vari
     QColor bFrame(40, 40, 60);
 
     std::vector<QColor> neons = {
-        QColor(0, 255, 255), QColor(255, 0, 128), QColor(180, 0, 255),
-        QColor(0, 255, 64),  QColor(255, 220, 0), QColor(255, 80, 0),
-        QColor(50, 100, 255)
+        QColor(30, 180, 180), QColor(180, 0, 90), QColor(120, 0, 200),
+        QColor(50, 180, 40),  QColor(200, 180, 40), QColor(200, 80, 40),
+        QColor(80, 100, 180)
     };
     QColor neon = neons[(variant + worldGX) % neons.size()];
 

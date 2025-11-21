@@ -141,7 +141,7 @@ void MainWindow::createCar() {
     Wheel* w2 = new Wheel(Constants::WHEEL_FRONT_X, Constants::WHEEL_FRONT_Y, Constants::WHEEL_FRONT_R);
     Wheel* w3 = new Wheel(Constants::WHEEL_MID_X,   Constants::WHEEL_MID_Y,   Constants::WHEEL_MID_R);
 
-    w1->attach(w2); w1->attach(w3); w2->attach(w3);
+    w1->attach(w2); w3->attach(w2); w1->attach(w3);
     m_wheels.append(w1); m_wheels.append(w2); m_wheels.append(w3);
 
     CarBody* body = new CarBody();
@@ -205,10 +205,12 @@ void MainWindow::gameLoop() {
     const int viewRightX = m_cameraX + width();
     const int marginPx   = Constants::COIN_SPAWN_MARGIN_CELLS * Constants::PIXEL_SIZE;
     const int offRightX  = viewRightX + marginPx;
-    const int maxStreamWidthPx = (Constants::COIN_GROUP_MAX - 1) * Constants::COIN_GROUP_STEP_MAX * Constants::PIXEL_SIZE;
+    const int maxStreamWidthPx =
+        (Constants::COIN_GROUP_MAX - 1) * Constants::COIN_GROUP_STEP_MAX * Constants::PIXEL_SIZE;
     ensureAheadTerrain(offRightX + maxStreamWidthPx + Constants::PIXEL_SIZE * 20);
 
-    m_coinSys.maybePlaceCoinStreamAtEdge(m_elapsedSeconds, m_cameraX, width(), m_heightAtGX, m_lastX, m_rng, m_dist);
+    m_coinSys.maybePlaceCoinStreamAtEdge(
+        m_elapsedSeconds, m_cameraX, width(), m_heightAtGX, m_lastX, m_rng, m_dist);
 
     m_nitroSys.update(
         m_nitroKey, m_fuel, m_elapsedSeconds, avgX,
@@ -622,7 +624,6 @@ double MainWindow::averageSpeed() const {
     return s / m_wheels.size();
 }
 
-
 void MainWindow::ensureAheadTerrain(int worldX) {
     while (m_lastX < worldX) {
         m_slope += (m_dist(m_rng) - (1 - m_terrain_height/100) * static_cast<float>(m_lastY) / height()) * m_difficulty;
@@ -651,7 +652,6 @@ void MainWindow::ensureAheadTerrain(int worldX) {
         maybeSpawnCloud();
     }
 }
-
 
 void MainWindow::maybeSpawnCloud() {
     if (m_lastX - m_lastCloudSpawnX < Constants::CLOUD_SPACING_PX) return;
@@ -688,7 +688,6 @@ void MainWindow::maybeSpawnCloud() {
         else ++i;
     }
 }
-
 
 void MainWindow::drawClouds(QPainter& p) {
     if (Constants::CLOUD_PROBABILITY[level_index] <= 0.001) return;
@@ -777,32 +776,39 @@ void MainWindow::drawFilledTerrain(QPainter& p) {
 
         for (int sGY = startScreenGY; sGY <= gridH(); ++sGY) {
             const int worldGY = sGY - camGY;
-            int depth = sGY - startScreenGY;
+            int depth = sGY - startScreenGY; // 0 is the top surface
 
+            // === HIGHWAY LOGIC (Level 5) ===
             if (level_index == 5) {
                 QColor c;
+                // The road is the top 14 pixels of the terrain
                 if (depth < 14) {
+                    // 1. Top Edge Highlight (Lighter gray)
                     if (depth == 0) {
                         c = QColor(80, 80, 85);
                     }
-
+                    // 2. Yellow Dashed Line (Middle of road)
+                    // Depth 6-7 is the vertical position.
+                    // (worldGX % 20 < 10) creates the horizontal dash pattern.
                     else if (depth >= 6 && depth <= 7 && (worldGX % 20 < 10)) {
-                        c = QColor(240, 190, 40);
+                        c = QColor(240, 190, 40); // Highway Yellow
                     }
-
+                    // 3. Asphalt Body (Dark Gray)
                     else {
                         c = QColor(50, 50, 55);
                     }
                     plotGridPixel(p, sgx, sGY, c);
-                    continue;
+                    continue; // Skip standard palette logic
                 }
             }
+            // ===============================
 
             bool topZone = (sGY < groundWorldGY + camGY + 3*Constants::SHADING_BLOCK);
             const QColor shade = grassShadeForBlock(worldGX, worldGY, topZone);
             plotGridPixel(p, sgx, sGY, shade);
         }
 
+        // Draw the top edge pixel (only for non-highway levels)
         if (level_index != 5) {
             const QColor edge = grassShadeForBlock(worldGX, groundWorldGY, true).darker(115);
             plotGridPixel(p, sgx, groundWorldGY + camGY, edge);
@@ -1182,7 +1188,6 @@ void MainWindow::saveGrandCoins() const {
     s.setValue("grandCoins", m_grandTotalCoins);
     s.sync();
 }
-
 
 void MainWindow::loadGrandCoins() {
     QSettings s("JU","F1PixelGrid");
