@@ -56,9 +56,9 @@ Navigate treacherous terrains, manage your fuel, perform aerial stunts for bonus
 
 | Key | Action | Description |
 | :---: | :--- | :--- |
-| **W / Up** | **Gas / Nitro** | Accelerate. Uses Fuel. Hold for Nitro Boost (when charged). |
-| **D / Right** | **Pitch Forward** | Rotates car clockwise in air. |
-| **A / Left** | **Pitch Backward** | Rotates car counter-clockwise (Brake on ground). |
+| **W / Up** | **Nitro** | Boost. Uses more Fuel. |
+| **D / Right** | **Accelerate / Pitch Up** | Moves car forward and rotates counter-clockwise in air. |
+| **A / Left** | **Decelerate / Pitch Down** | Moves car backward and rotates clockwise in air. |
 | **P** | **Pause** | Freezes game state. |
 | **S** | **Scoreboard** | View local high scores. |
 | **ESC** | **Exit** | Close the game. |
