@@ -238,16 +238,6 @@ void CarBody::simulate(int level_index, const QVector<Line>& terrain, bool accel
 
                 m_vx = vAlongLine * std::cos(theta) - vNormalToLine * std::sin(theta);
                 m_vy = vAlongLine * std::sin(theta) + vNormalToLine * std::cos(theta);
-
-                // double torque = 0.01 * ((intersectionx - m_cx) * std::sin(theta) - (intersectiony - m_cy) * std::cos(theta));
-                // if (m_isAlive) {
-                //     for (Wheel* wheel : m_wheels) {
-                //         double phi = -std::atan2(m_cy - wheel->getY(), m_cx - wheel->getX());
-                //         wheel->updateR(torque * std::sin(phi), torque * std::cos(phi));
-                //     }
-                // } else {
-                //     m_angle += 100 * torque;
-                // }
             }
         }
 
@@ -307,79 +297,22 @@ void CarBody::simulate(int level_index, const QVector<Line>& terrain, bool accel
         double forceX = unitX * springForceMagnitude;
         double forceY = unitY * springForceMagnitude;
 
+        // 2. Calculate relative velocity
         double relativeVx = wheel->getVx() - m_vx;
         double relativeVy = wheel->getVy() - m_vy;
-        double dampingForceX = relativeVx * Constants::DAMPING;
-        double dampingForceY = relativeVy * Constants::DAMPING;
+
+        // 3. Project relative velocity onto the spring axis (Dot Product)
+        // This isolates the component of velocity that is stretching/compressing the spring
+        double velocityAlongSpring = relativeVx * unitX + relativeVy * unitY;
+
+        // 4. Calculate damping force components based ONLY on that projection
+        double dampingForceX = velocityAlongSpring * unitX * Constants::DAMPING;
+        double dampingForceY = velocityAlongSpring * unitY * Constants::DAMPING;
 
         m_vx -= (forceX - dampingForceX);
         m_vy -= (forceY - dampingForceY);
         wheel->updateV(forceX - dampingForceX, forceY - dampingForceY);
     }
-
-    // if (m_isAlive && m_wheels.size() > 0) {
-    //     const double cosA = std::cos(m_angle);
-    //     const double sinA = std::sin(m_angle);
-    //     for (int i = 0; i < m_wheels.size(); ++i) {
-    //         Wheel* w = m_wheels.at(i);
-    //         const double desired = m_attachDistances.at(i);
-
-    //         double dx = w->getX() - m_cx;
-    //         double dy = w->getY() - m_cy;
-    //         double lx =  dx * cosA + dy * sinA;
-    //         double ly = -dx * sinA + dy * cosA;
-
-    //         const double minDown = std::max(0.2 * desired, 0.5 * double(w->radius()));
-    //         if (ly < minDown) ly = minDown;
-
-    //         const double r = std::sqrt(lx*lx + ly*ly);
-    //         const double minR = 0.8 * desired;
-    //         if (r > 1e-6 && r < minR) {
-    //             const double s = minR / r;
-    //             lx *= s; ly *= s;
-    //         }
-
-    //         double wx = lx * cosA - ly * sinA;
-    //         double wy = lx * sinA + ly * cosA;
-    //         const double targetX = m_cx + wx;
-    //         const double targetY = m_cy + wy;
-    //         w->updateR(targetX - w->getX(), targetY - w->getY());
-    //     }
-
-    //     double corrX = 0.0, corrY = 0.0;
-    //     for (int i = 0; i < m_wheels.size(); ++i) {
-    //         Wheel* w = m_wheels.at(i);
-    //         const double desired = m_attachDistances.at(i);
-
-    //         double dx = w->getX() - m_cx;
-    //         double dy = w->getY() - m_cy;
-    //         double lx =  dx * cosA + dy * sinA;
-    //         double ly = -dx * sinA + dy * cosA;
-
-    //         const double minDown = std::max(0.2 * desired, 0.5 * double(w->radius()));
-    //         if (ly < minDown) {
-    //             double d = (minDown - ly);
-    //             corrX +=  ( sinA) * d;
-    //             corrY += (-cosA) * d;
-    //         }
-
-    //         double r = std::sqrt(dx*dx + dy*dy);
-    //         const double minR = 0.9 * desired;
-    //         if (r > 1e-6 && r < minR) {
-    //             double ux = dx / r, uy = dy / r;
-    //             double d = (minR - r);
-    //             corrX -= ux * d;
-    //             corrY -= uy * d;
-    //         }
-    //     }
-    //     double len = std::sqrt(corrX*corrX + corrY*corrY);
-    //     if (len > 0.0) {
-    //         double lim = 6.0;
-    //         if (len > lim) { corrX *= lim / len; corrY *= lim / len; }
-    //         m_cx += corrX;
-    //         m_cy += corrY;
-    //     }
-    // }
 
     if (!m_isAlive) {
         double pushUp = 0.0;

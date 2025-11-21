@@ -208,10 +208,17 @@ void Wheel::simulate(int level_index, const QList<Line>& lines, bool acceleratin
         double forceX = unitX * springForceMagnitude;
         double forceY = unitY * springForceMagnitude;
 
-        double relativeVx = other->m_vx - m_vx;
-        double relativeVy = other->m_vy - m_vy;
-        double dampingForceX = relativeVx * Constants::DAMPING;
-        double dampingForceY = relativeVy * Constants::DAMPING;
+        // 2. Calculate relative velocity
+        double relativeVx = other->getVx() - m_vx;
+        double relativeVy = other->getVy() - m_vy;
+
+        // 3. Project relative velocity onto the spring axis (Dot Product)
+        // This isolates the component of velocity that is stretching/compressing the spring
+        double velocityAlongSpring = relativeVx * unitX + relativeVy * unitY;
+
+        // 4. Calculate damping force components based ONLY on that projection
+        double dampingForceX = velocityAlongSpring * unitX * Constants::DAMPING;
+        double dampingForceY = velocityAlongSpring * unitY * Constants::DAMPING;
 
         m_vx -= (forceX - dampingForceX);
         m_vy -= (forceY - dampingForceY);
