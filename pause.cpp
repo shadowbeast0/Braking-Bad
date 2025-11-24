@@ -38,7 +38,9 @@ void PauseOverlay::paintEvent(QPaintEvent*) {
     int tw = textWidthCells(title, ts);
     int tgx = (gw - tw) / 2;
     int tgy = gh / 3;
-    drawPixelText(p, title, tgx, tgy, ts, Constants::TEXT_COLOR[m_levelIndex], true);
+
+    // UPDATED: Access textColor via LEVELS
+    drawPixelText(p, title, tgx, tgy, ts, Constants::LEVELS[m_levelIndex].textColor, true);
 
     if (m_state == Paused) {
         QRect r = resumeRectPx();
@@ -61,7 +63,9 @@ void PauseOverlay::paintEvent(QPaintEvent*) {
         int nw = textWidthCells(num, ns);
         int ngx = (gw - nw) / 2;
         int ngy = tgy + 7*ts + 8;
-        drawPixelText(p, num, ngx, ngy, ns, Constants::TEXT_COLOR[m_levelIndex], true);
+
+        // UPDATED: Access textColor via LEVELS
+        drawPixelText(p, num, ngx, ngy, ns, Constants::LEVELS[m_levelIndex].textColor, true);
     }
 }
 

@@ -1,5 +1,4 @@
 #include "carBody.h"
-
 #include <cmath>
 #include <climits>
 #include <algorithm>
@@ -190,6 +189,8 @@ QVector<Line> CarBody::getLines() {
 }
 
 void CarBody::simulate(int level_index, const QVector<Line>& terrain, bool accelerating, bool braking) {
+    const auto& level = Constants::LEVELS[level_index];
+
     if (m_isAlive && m_wheels.size() >= 2) {
         double theta = std::atan2(m_wheels[1]->getY() - m_wheels[0]->getY(), m_wheels[1]->getX() - m_wheels[0]->getX());
         rotate(theta);
@@ -198,13 +199,13 @@ void CarBody::simulate(int level_index, const QVector<Line>& terrain, bool accel
     m_cx += m_vx;
     m_cy -= m_vy;
 
-    m_vy -= Constants::GRAVITY[level_index];
+    m_vy -= level.gravity;
 
-    m_vx *= 1 - Constants::AIR_RESISTANCE[level_index];
-    m_vy *= 1 - Constants::AIR_RESISTANCE[level_index];
+    m_vx *= 1 - level.airResistance;
+    m_vy *= 1 - level.airResistance;
 
     if(accelerating && braking){
-        m_vy -= Constants::GRAVITY[level_index] * 0.5;
+        m_vy -= level.gravity * 0.5;
     }
 
     for (const Line& line : terrain) {
@@ -219,7 +220,6 @@ void CarBody::simulate(int level_index, const QVector<Line>& terrain, bool accel
             double intersectionx = (m * (y - b) + x) / (m * m + 1);
 
             if (dist <= 4 && intersectionx >= line.getX1() - 1 && intersectionx <= line.getX2() + 1) {
-                double intersectiony = m * intersectionx + b;
                 double theta = -std::atan(m);
 
                 while (dist < 4) {
@@ -233,8 +233,8 @@ void CarBody::simulate(int level_index, const QVector<Line>& terrain, bool accel
                 double vAlongLine = m_vx * std::cos(theta) + m_vy * std::sin(theta);
                 double vNormalToLine = m_vy * std::cos(theta) - m_vx * std::sin(theta);
 
-                vNormalToLine = vNormalToLine * Constants::RESTITUTION[level_index] / (1 + std::exp(-vNormalToLine));
-                vAlongLine *= 1 - Constants::FRICTION[level_index];
+                vNormalToLine = vNormalToLine * level.restitution / (1 + std::exp(-vNormalToLine));
+                vAlongLine *= 1 - level.friction;
 
                 m_vx = vAlongLine * std::cos(theta) - vNormalToLine * std::sin(theta);
                 m_vy = vAlongLine * std::sin(theta) + vNormalToLine * std::cos(theta);
@@ -266,8 +266,8 @@ void CarBody::simulate(int level_index, const QVector<Line>& terrain, bool accel
                 double vAlongLine = m_vx * std::cos(theta) + m_vy * std::sin(theta);
                 double vNormalToLine = m_vy * std::cos(theta) - m_vx * std::sin(theta);
 
-                vNormalToLine = vNormalToLine * Constants::RESTITUTION[level_index] / (1 + std::exp(-vNormalToLine));
-                vAlongLine *= 1 - Constants::FRICTION[level_index];
+                vNormalToLine = vNormalToLine * level.restitution / (1 + std::exp(-vNormalToLine));
+                vAlongLine *= 1 - level.friction;
 
                 m_vx = vAlongLine * std::cos(theta) - vNormalToLine * std::sin(theta);
                 m_vy = vAlongLine * std::sin(theta) + vNormalToLine * std::cos(theta);
@@ -297,15 +297,14 @@ void CarBody::simulate(int level_index, const QVector<Line>& terrain, bool accel
         double forceX = unitX * springForceMagnitude;
         double forceY = unitY * springForceMagnitude;
 
-        // 2. Calculate relative velocity
+        // Relative velocity
         double relativeVx = wheel->getVx() - m_vx;
         double relativeVy = wheel->getVy() - m_vy;
 
-        // 3. Project relative velocity onto the spring axis (Dot Product)
-        // This isolates the component of velocity that is stretching/compressing the spring
+        // Project relative velocity onto the spring axis
         double velocityAlongSpring = relativeVx * unitX + relativeVy * unitY;
 
-        // 4. Calculate damping force components based ONLY on that projection
+        // Damping force
         double dampingForceX = velocityAlongSpring * unitX * Constants::DAMPING;
         double dampingForceY = velocityAlongSpring * unitY * Constants::DAMPING;
 

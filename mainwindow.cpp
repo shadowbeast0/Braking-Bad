@@ -1,6 +1,7 @@
 #include "mainwindow.h"
 #include "coin.h"
 #include "outro.h"
+#include "constants.h" // Ensure this includes the new struct definition
 #include <QSettings>
 #include <QCloseEvent>
 #include <QPainter>
@@ -82,7 +83,7 @@ MainWindow::MainWindow(QWidget *parent)
 
         level_index = levelIndex;
 
-        
+
         if (m_media) {
             m_media->setStageBgm(level_index);
         }
@@ -114,7 +115,11 @@ void MainWindow::generateInitialTerrain() {
     for (int i = Constants::STEP; i <= width() + Constants::STEP; i += Constants::STEP) {
 
         m_slope += (m_dist(m_rng) - (1 - m_terrain_height/100) * static_cast<float>(m_lastY) / height()) * m_difficulty;
-        m_slope = std::clamp(m_slope, -(float)Constants::MAX_SLOPE[level_index], (float)Constants::MAX_SLOPE[level_index]);
+
+        // UPDATED: Access maxSlope via LEVELS
+        float maxS = (float)Constants::LEVELS[level_index].maxSlope;
+        m_slope = std::clamp(m_slope, -maxS, maxS);
+
         const int newY = m_lastY + std::lround(m_slope * std::pow(std::abs(m_slope), m_irregularity) * Constants::STEP);
 
         Line seg(i - Constants::STEP, m_lastY, i, newY);
@@ -122,15 +127,16 @@ void MainWindow::generateInitialTerrain() {
         rasterizeSegmentToHeightMapWorld(seg.getX1(), m_lastY, seg.getX2(), newY);
 
         int midX = seg.getX1();
-        int groundGy = groundGyNearestGX(midX / Constants::PIXEL_SIZE); 
+        int groundGy = groundGyNearestGX(midX / Constants::PIXEL_SIZE);
         m_propSys.maybeSpawnProp(currentWorldX, groundGy, level_index, m_slope, m_rng);
 
         m_lastY = newY;
         m_lastX = i;
 
-        m_difficulty += Constants::DIFFICULTY_INCREMENT[level_index];
-        m_irregularity += Constants::IRREGULARITY_INCREMENT[level_index];
-        if(m_terrain_height < 0.5) m_terrain_height += Constants::TERRAIN_HEIGHT_INCREMENT[level_index];
+        // UPDATED: Access increments via LEVELS
+        m_difficulty += Constants::LEVELS[level_index].difficultyIncrement;
+        m_irregularity += Constants::LEVELS[level_index].irregularityIncrement;
+        if(m_terrain_height < 0.5) m_terrain_height += Constants::LEVELS[level_index].terrainHeightIncrement;
     }
     m_lastX = Constants::STEP * m_lines.size();
 }
@@ -200,7 +206,7 @@ void MainWindow::gameLoop() {
     double carX = (!m_bodies.isEmpty()) ? m_bodies.first()->getX() : avgX;
     double carY = (!m_bodies.isEmpty()) ? m_bodies.first()->getY() : avgY;
 
-    m_flip.update(angleRad, carX, carY, m_elapsedSeconds, [this](int bonus){ m_coinCount += bonus; });  
+    m_flip.update(angleRad, carX, carY, m_elapsedSeconds, [this](int bonus){ m_coinCount += bonus; });
 
     const int viewRightX = m_cameraX + width();
     const int marginPx   = Constants::COIN_SPAWN_MARGIN_CELLS * Constants::PIXEL_SIZE;
@@ -537,57 +543,57 @@ void MainWindow::keyPressEvent(QKeyEvent *event) {
     if (event->isAutoRepeat()) return;
 
     switch (event->key()) {
-        case Qt::Key_D:
-        case Qt::Key_Right:
-            if (!m_accelerating) m_media->startAccelLoop();
-            m_accelerating = true;
-            m_keylog.setPressed(Qt::Key_D, true);
-            break;
+    case Qt::Key_D:
+    case Qt::Key_Right:
+        if (!m_accelerating) m_media->startAccelLoop();
+        m_accelerating = true;
+        m_keylog.setPressed(Qt::Key_D, true);
+        break;
 
-        case Qt::Key_A:
-        case Qt::Key_Left:
-            m_braking = true;
-            m_keylog.setPressed(Qt::Key_A, true);
-            break;
+    case Qt::Key_A:
+    case Qt::Key_Left:
+        m_braking = true;
+        m_keylog.setPressed(Qt::Key_A, true);
+        break;
 
-        case Qt::Key_W:
-        case Qt::Key_Up:
-            m_media->playNitroOnce();
-            m_nitroKey = true;
-            m_keylog.setPressed(Qt::Key_W, true);
-            break;
+    case Qt::Key_W:
+    case Qt::Key_Up:
+        m_media->playNitroOnce();
+        m_nitroKey = true;
+        m_keylog.setPressed(Qt::Key_W, true);
+        break;
 
-        case Qt::Key_G:
-            m_showGrid = !m_showGrid;
-            break;
+    case Qt::Key_G:
+        m_showGrid = !m_showGrid;
+        break;
 
-        case Qt::Key_P:
-            if (!m_intro && !m_outro && m_timer && m_timer->isActive()) {
-                m_timer->stop();
-                if (m_pause) {
-                    m_pause->setLevelIndex(level_index);
-                    m_pause->showPaused();
-                }
+    case Qt::Key_P:
+        if (!m_intro && !m_outro && m_timer && m_timer->isActive()) {
+            m_timer->stop();
+            if (m_pause) {
+                m_pause->setLevelIndex(level_index);
+                m_pause->showPaused();
             }
-            break;
+        }
+        break;
 
-        case Qt::Key_Escape:
-            close();
-            break;
-        case Qt::Key_S:
-            if (m_leaderboardWidget && m_leaderboardMgr) {
-                if (m_timer && m_timer->isActive()) {
-                    m_timer->stop(); // pause game while viewing leaderboard
-                }
-                m_leaderboardWidget->setGeometry(rect());
-                m_leaderboardWidget->show();
-                m_leaderboardWidget->raise();
-                m_leaderboardWidget->setFocus();
-                m_leaderboardMgr->refreshLeaderboard(); // fetch latest
+    case Qt::Key_Escape:
+        close();
+        break;
+    case Qt::Key_S:
+        if (m_leaderboardWidget && m_leaderboardMgr) {
+            if (m_timer && m_timer->isActive()) {
+                m_timer->stop(); // pause game while viewing leaderboard
             }
-            break;
-        default:
-            QWidget::keyPressEvent(event);
+            m_leaderboardWidget->setGeometry(rect());
+            m_leaderboardWidget->show();
+            m_leaderboardWidget->raise();
+            m_leaderboardWidget->setFocus();
+            m_leaderboardMgr->refreshLeaderboard(); // fetch latest
+        }
+        break;
+    default:
+        QWidget::keyPressEvent(event);
     }
 }
 
@@ -635,7 +641,7 @@ void MainWindow::ensureAheadTerrain(int worldX) {
         m_lines.append(seg);
         rasterizeSegmentToHeightMapWorld(seg.getX1(), m_lastY, seg.getX2(), newY);
         int currentWorldX = m_lastX;
-        
+
         int gx = currentWorldX / Constants::PIXEL_SIZE;
         int groundGy = groundGyNearestGX(gx);
         m_propSys.maybeSpawnProp(currentWorldX, groundGy, level_index, m_slope, m_rng);
@@ -645,9 +651,11 @@ void MainWindow::ensureAheadTerrain(int worldX) {
 
         if (m_lines.size() > (width() / Constants::STEP) * 3) { m_lines.removeFirst(); pruneHeightMap(); }
 
-        m_difficulty += Constants::DIFFICULTY_INCREMENT[level_index];
-        m_irregularity += Constants::IRREGULARITY_INCREMENT[level_index];
-        if(m_terrain_height < 0.5) m_terrain_height += Constants::TERRAIN_HEIGHT_INCREMENT[level_index];
+        // UPDATED: Access increments via LEVELS
+        m_difficulty += Constants::LEVELS[level_index].difficultyIncrement;
+        m_irregularity += Constants::LEVELS[level_index].irregularityIncrement;
+        if(m_terrain_height < 0.5) m_terrain_height += Constants::LEVELS[level_index].terrainHeightIncrement;
+
         m_fuelSys.maybePlaceFuelAtEdge(m_lastX, m_heightAtGX, m_difficulty, m_elapsedSeconds);
         maybeSpawnCloud();
     }
@@ -655,7 +663,9 @@ void MainWindow::ensureAheadTerrain(int worldX) {
 
 void MainWindow::maybeSpawnCloud() {
     if (m_lastX - m_lastCloudSpawnX < Constants::CLOUD_SPACING_PX) return;
-    if (m_dist(m_rng) > Constants::CLOUD_PROBABILITY[level_index]) return;
+
+    // UPDATED: Access probability via LEVELS
+    if (m_dist(m_rng) > Constants::LEVELS[level_index].cloudProbability) return;
 
     int gx = m_lastX / Constants::PIXEL_SIZE;
     auto it = m_heightAtGX.constFind(gx);
@@ -690,7 +700,8 @@ void MainWindow::maybeSpawnCloud() {
 }
 
 void MainWindow::drawClouds(QPainter& p) {
-    if (Constants::CLOUD_PROBABILITY[level_index] <= 0.001) return;
+    // UPDATED: Access probability via LEVELS
+    if (Constants::LEVELS[level_index].cloudProbability <= 0.001) return;
 
     int camGX = m_cameraX / Constants::PIXEL_SIZE;
     int camGY = m_cameraY / Constants::PIXEL_SIZE;
@@ -713,7 +724,8 @@ void MainWindow::drawClouds(QPainter& p) {
                 double fuzz = (h % 100) / 400.0;
 
                 if (r2 <= 1.0 + fuzz) {
-                    QColor cMain = Constants::CLOUD_COLOR[level_index];
+                    // UPDATED: Access cloudColor via LEVELS
+                    QColor cMain = Constants::LEVELS[level_index].cloudColor;
                     QColor cSoft(cMain.red()*0.9,cMain.green()*0.9,cMain.blue()*0.9);
                     QColor pix = ((h >> 3) & 1) ? cMain : cSoft;
                     plotGridPixelLocal(baseGX + xx, baseGY + yy, pix);
@@ -724,7 +736,8 @@ void MainWindow::drawClouds(QPainter& p) {
 }
 
 void MainWindow::drawStars(QPainter& p) {
-    if (Constants::STAR_PROBABILITY[level_index] <= 0.001) return;
+    // UPDATED: Access starProbability via LEVELS
+    if (Constants::LEVELS[level_index].starProbability <= 0.001) return;
 
     const int BLOCK = 20;
     const int camGX = m_cameraX / Constants::PIXEL_SIZE;
@@ -741,7 +754,8 @@ void MainWindow::drawStars(QPainter& p) {
             std::mt19937 rng(h);
             std::uniform_real_distribution<float> fdist(0.0f, 1.0f);
 
-            if (fdist(rng) < Constants::STAR_PROBABILITY[level_index] * 0.4) {
+            // UPDATED: Access starProbability via LEVELS
+            if (fdist(rng) < Constants::LEVELS[level_index].starProbability * 0.4) {
                 std::uniform_int_distribution<int> idist(0, BLOCK - 1);
                 int wgx = bx * BLOCK + idist(rng);
                 int wgy = by * BLOCK + idist(rng);
@@ -822,11 +836,15 @@ QColor MainWindow::grassShadeForBlock(int worldGX, int worldGY, bool greenify) c
     const quint32 h = hash2D(bx, by);
 
     if (greenify) {
-        const int idxG = int(h % m_grassPalette.size());
-        return m_grassPalette[level_index][idxG];
+        // UPDATED: Access palette via LEVELS, and use size() correctly
+        const auto& pal = Constants::LEVELS[level_index].grassPalette;
+        const int idxG = int(h % pal.size());
+        return pal[idxG];
     } else {
-        const int idxD = int(h % m_dirtPalette.size());
-        return m_dirtPalette[level_index][idxD];
+        // UPDATED: Access palette via LEVELS
+        const auto& pal = Constants::LEVELS[level_index].dirtPalette;
+        const int idxD = int(h % pal.size());
+        return pal[idxD];
     }
 }
 
@@ -874,53 +892,53 @@ void MainWindow::drawHUDFuel(QPainter& p) {
     for (int x=tickEvery; x<wcells; x+=tickEvery)
         plotGridPixel(p, gx+x, gy+barH, QColor(80,80,70));
     const double lowFuelThreshold = Constants::FUEL_MAX * 0.25;
-    
+
     const bool isLow = (m_fuel <= lowFuelThreshold);
     const bool isFlashingOn = (std::fmod(m_elapsedSeconds, 1.0) < 0.5);
-    
+
     if (isLow && isFlashingOn) {
         const QColor red(230, 50, 40);
         const QColor white(255, 255, 255);
-        const int warningGap = 3; 
+        const int warningGap = 3;
         const int warningTopGY = gy + barH + 1 + warningGap;
 
         const int totalWidth = 5 + 2 + 3 + 1 + 3 + 1 + 5;
         int currentGX = (gridW() - totalWidth) / 2;
-        
-        const int triTopGY = warningTopGY;        
-        
+
+        const int triTopGY = warningTopGY;
+
         plotGridPixel(p, currentGX + 2, triTopGY,     red);
         plotGridPixel(p, currentGX + 1, triTopGY + 1, red);
-        plotGridPixel(p, currentGX + 2, triTopGY + 1, white); 
+        plotGridPixel(p, currentGX + 2, triTopGY + 1, white);
         plotGridPixel(p, currentGX + 3, triTopGY + 1, red);
         plotGridPixel(p, currentGX,     triTopGY + 2, red);
         plotGridPixel(p, currentGX + 1, triTopGY + 2, red);
-        plotGridPixel(p, currentGX + 2, triTopGY + 2, white); 
+        plotGridPixel(p, currentGX + 2, triTopGY + 2, white);
         plotGridPixel(p, currentGX + 3, triTopGY + 2, red);
         plotGridPixel(p, currentGX + 4, triTopGY + 2, red);
-        plotGridPixel(p, currentGX + 2, triTopGY + 4, white); 
+        plotGridPixel(p, currentGX + 2, triTopGY + 4, white);
 
-        currentGX += 5 + 2; 
+        currentGX += 5 + 2;
 
-        
+
         const int textTopGY = warningTopGY;
 
-        
+
         for(int y=0; y<5; ++y) plotGridPixel(p, currentGX, textTopGY+y, red);
         plotGridPixel(p, currentGX+1, textTopGY+4, red);
         plotGridPixel(p, currentGX+2, textTopGY+4, red);
-        currentGX += 3 + 1; 
+        currentGX += 3 + 1;
 
-        
+
         for(int y=0; y<5; ++y) {
             plotGridPixel(p, currentGX, textTopGY+y, red);
             plotGridPixel(p, currentGX+2, textTopGY+y, red);
         }
         plotGridPixel(p, currentGX+1, textTopGY, red);
         plotGridPixel(p, currentGX+1, textTopGY+4, red);
-        currentGX += 3 + 1; 
+        currentGX += 3 + 1;
 
-        
+
         for(int y=0; y<5; ++y) {
             plotGridPixel(p, currentGX, textTopGY+y, red);
             plotGridPixel(p, currentGX+4, textTopGY+y, red);
@@ -939,7 +957,10 @@ void MainWindow::drawHUDCoins(QPainter& p) {
     plotGridPixel(p, iconGX-1, iconGY-Constants::COIN_RADIUS_CELLS+1, QColor(255,255,220));
     QFont f; f.setFamily("Monospace"); f.setBold(true); f.setPointSize(12);
     p.setFont(f);
-    p.setPen(Constants::TEXT_COLOR[level_index]);
+
+    // UPDATED: Access textColor via LEVELS
+    p.setPen(Constants::LEVELS[level_index].textColor);
+
     int px = (Constants::HUD_LEFT_MARGIN + Constants::COIN_RADIUS_CELLS*2 + 3) * Constants::PIXEL_SIZE;
     int py = (Constants::HUD_TOP_MARGIN  + Constants::COIN_RADIUS_CELLS + 2) * Constants::PIXEL_SIZE;
     p.drawText(px, py, QString::number(m_coinCount));
@@ -950,7 +971,10 @@ void MainWindow::drawHUDDistance(QPainter& p) {
     QString s = QString::number(meters, 'f', 1) + " m";
     QFont f; f.setFamily("Monospace"); f.setBold(true); f.setPointSize(12);
     p.setFont(f);
-    p.setPen(Constants::TEXT_COLOR[level_index]);
+
+    // UPDATED: Access textColor via LEVELS
+    p.setPen(Constants::LEVELS[level_index].textColor);
+
     QFontMetrics fm(f);
     int px = width() - fm.horizontalAdvance(s) - 12;
     int py = (Constants::HUD_TOP_MARGIN + Constants::COIN_RADIUS_CELLS + 2) * Constants::PIXEL_SIZE;
@@ -962,7 +986,10 @@ void MainWindow::drawHUDScore(QPainter& p) {
     const QString s = QString::number(m_score);
     QFont f; f.setFamily("Monospace"); f.setBold(true); f.setPointSize(12);
     p.setFont(f);
-    p.setPen(Constants::TEXT_COLOR[level_index]);
+
+    // UPDATED: Access textColor via LEVELS
+    p.setPen(Constants::LEVELS[level_index].textColor);
+
     QFontMetrics fm(f);
     const int rightPadPx = 12;
     const int px = width() - fm.horizontalAdvance(s) - rightPadPx;
@@ -998,8 +1025,9 @@ void MainWindow::showGameOver() {
     if (m_media) m_media->playGameOverOnce();
     if (m_leaderboardMgr) {
         QString stageName = QStringLiteral("UNKNOWN");
-        if (level_index >= 0 && level_index < m_levelNames.size()) {
-            stageName = m_levelNames[level_index];
+        // UPDATED: Access name via LEVELS
+        if (level_index >= 0 && level_index < Constants::LEVELS.size()) {
+            stageName = Constants::LEVELS[level_index].name;
         }
         m_leaderboardMgr->submitScore(stageName, m_score);
     }
@@ -1070,13 +1098,14 @@ void MainWindow::returnToIntro() {
 
         level_index = levelIndex;
 
-        
+
         if (m_media) {
             m_media->setStageBgm(level_index);
         }
 
         QPalette pal = palette();
-        pal.setColor(QPalette::Window, Constants::SKY_COLOR[level_index]);
+        // UPDATED: Access skyColor via LEVELS
+        pal.setColor(QPalette::Window, Constants::LEVELS[level_index].skyColor);
         setAutoFillBackground(true);
         setPalette(pal);
 
@@ -1128,7 +1157,8 @@ void MainWindow::disarmGameOver() {
 void MainWindow::resetGameRound() {
     loadGrandCoins();
     QPalette pal = palette();
-    pal.setColor(QPalette::Window, Constants::SKY_COLOR[level_index]);
+    // UPDATED: Access skyColor via LEVELS
+    pal.setColor(QPalette::Window, Constants::LEVELS[level_index].skyColor);
     setAutoFillBackground(true);
     setPalette(pal);
 
@@ -1153,9 +1183,11 @@ void MainWindow::resetGameRound() {
     m_lastX = 0;
     m_lastY = 0;
     m_slope = 0;
-    m_difficulty = Constants::INITIAL_DIFFICULTY[level_index];
-    m_irregularity = Constants::INITIAL_IRREGULARITY[level_index];
-    m_terrain_height = Constants::INITIAL_TERRAIN_HEIGHT[level_index];
+
+    // UPDATED: Access initial values via LEVELS
+    m_difficulty = Constants::LEVELS[level_index].initialDifficulty;
+    m_irregularity = Constants::LEVELS[level_index].initialIrregularity;
+    m_terrain_height = Constants::LEVELS[level_index].initialTerrainHeight;
     generateInitialTerrain();
 
     m_clouds.clear();

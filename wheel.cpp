@@ -1,6 +1,7 @@
 #include "wheel.h"
 #include <cmath>
 #include <algorithm>
+#include "constants.h"
 
 Wheel::Wheel(int x_, int y_, int radius)
     : x(x_), y(y_), m_radius(radius)
@@ -42,11 +43,6 @@ double Wheel::getVy(){
     return m_vy;
 }
 
-// void Wheel::updateR(double dx, double dy){
-//     x+=dx;
-//     y+=dy;
-// }
-
 void Wheel::updateV(double dvx, double dvy){
     m_vx+=dvx;
     m_vy+=dvy;
@@ -54,16 +50,19 @@ void Wheel::updateV(double dvx, double dvy){
 
 void Wheel::simulate(int level_index, const QList<Line>& lines, bool accelerating, bool braking, bool nitro)
 {
+    // Access the specific level data
+    const auto& level = Constants::LEVELS[level_index];
+
     // integrate position
     x += m_vx;
     y -= m_vy;
 
     // gravity
-    m_vy -= Constants::GRAVITY[level_index];
+    m_vy -= level.gravity;
 
     // air drag
-    m_vx *= 1 - Constants::AIR_RESISTANCE[level_index];
-    m_vy *= 1 - Constants::AIR_RESISTANCE[level_index];
+    m_vx *= 1 - level.airResistance;
+    m_vy *= 1 - level.airResistance;
 
     // collision with terrain lines
     for (const Line& line : lines) {
@@ -90,27 +89,27 @@ void Wheel::simulate(int level_index, const QList<Line>& lines, bool acceleratin
             double vNormalToLine = m_vy * std::cos(theta) - m_vx * std::sin(theta);
 
             // bounce normal
-            vNormalToLine *= (vNormalToLine < 0.2) ? Constants::RESTITUTION[level_index] : 1;
+            vNormalToLine *= (vNormalToLine < 0.2) ? level.restitution : 1;
 
             // tangential friction / clamp
             if ((vAlongLine >  Constants::MAX_VELOCITY / 1000) ||
                 (vAlongLine < -Constants::MAX_VELOCITY / 1000))
             {
-                vAlongLine *= 1 - Constants::FRICTION[level_index];
+                vAlongLine *= 1 - level.friction;
             } else {
                 vAlongLine = 0;
             }
 
             // driving force along tangent
             if (accelerating && isAlive && vAlongLine <  Constants::MAX_VELOCITY) {
-                vAlongLine += (Constants::ACCELERATION * (1 - (vAlongLine / Constants::MAX_VELOCITY)) * cos(theta) * Constants::TRACTION[level_index]);
+                vAlongLine += (Constants::ACCELERATION * (1 - (vAlongLine / Constants::MAX_VELOCITY)) * cos(theta) * level.traction);
             }
             if (braking && isAlive && vAlongLine > -Constants::MAX_VELOCITY) {
-                vAlongLine -= (Constants::DECELERATION * (1 + (vAlongLine / Constants::MAX_VELOCITY)) * cos(theta) * Constants::TRACTION[level_index]);
+                vAlongLine -= (Constants::DECELERATION * (1 + (vAlongLine / Constants::MAX_VELOCITY)) * cos(theta) * level.traction);
             }
 
             if(accelerating && braking){
-                m_vy -= Constants::GRAVITY[level_index] * 0.5;
+                m_vy -= level.gravity * 0.5;
             }
 
             // rotate back to world frame
@@ -119,28 +118,23 @@ void Wheel::simulate(int level_index, const QList<Line>& lines, bool acceleratin
             m_vy = vAlongLine    * std::sin(theta)
                    + vNormalToLine * std::cos(theta);
 
-            // collision bleeds some spin energy (from previous nitro code)
+            // collision bleeds some spin energy
             if (m_isRoot && m_others.size() > 0 && dist < std::max(1, m_radius)) {
                 m_omega *= 0.9;
             }
         }
     }
 
-    // shared body tilt / rotation between two wheels (nitro-aware)
+    // shared body tilt / rotation between two wheels
     if (m_isRoot && m_others.size() > 0) {
         Wheel* other = m_others.first();
 
-        // angular control:
-        // 1. nitro: mild damping of omega (straight flight)
-        // 2. accel only: tilt backward (wheelie)
-        // 3. brake only: tilt forward (nose down)
-        // 4. none: passive damping
+        m_angle = std::atan2(other->getY() - this->getY(), other->getX() - this->getX());
+
         if (nitro) {
             m_omega *= 1 - Constants::ANGULAR_DAMPING;
             if (std::abs(m_omega) < 1e-4) m_omega = 0.0;
         } if (accelerating && braking) {
-            m_angle = std::atan2(other->getY() - this->getY(), other->getX() - this->getX());
-
             if (std::abs(m_angle) > 1e-2) {
                 if (m_angle > 0) m_omega += Constants::ANGULAR_ACCELERATION;
                 else m_omega -= Constants::ANGULAR_DECELERATION;
@@ -157,11 +151,6 @@ void Wheel::simulate(int level_index, const QList<Line>& lines, bool acceleratin
             m_omega *= 1 - Constants::ANGULAR_DAMPING;
             if (std::abs(m_omega) < 1e-4) m_omega = 0.0;
         }
-
-        // integrate angle and wrap
-        // m_angle += m_omega;
-        // if (m_angle >  M_PI) m_angle -= 2 * M_PI;
-        // else if (m_angle < -M_PI) m_angle += 2 * M_PI;
 
         // apply incremental rotation of the wheel pair about COM
         if (std::abs(m_omega) > 1e-6) {
@@ -208,15 +197,14 @@ void Wheel::simulate(int level_index, const QList<Line>& lines, bool acceleratin
         double forceX = unitX * springForceMagnitude;
         double forceY = unitY * springForceMagnitude;
 
-        // 2. Calculate relative velocity
+        // Relative velocity
         double relativeVx = other->getVx() - m_vx;
         double relativeVy = other->getVy() - m_vy;
 
-        // 3. Project relative velocity onto the spring axis (Dot Product)
-        // This isolates the component of velocity that is stretching/compressing the spring
+        // Project relative velocity onto the spring axis
         double velocityAlongSpring = relativeVx * unitX + relativeVy * unitY;
 
-        // 4. Calculate damping force components based ONLY on that projection
+        // Damping force
         double dampingForceX = velocityAlongSpring * unitX * Constants::DAMPING;
         double dampingForceY = velocityAlongSpring * unitY * Constants::DAMPING;
 

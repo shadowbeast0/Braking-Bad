@@ -77,7 +77,10 @@ void NitroSystem::drawHUD(QPainter& p, double elapsedSeconds, int levelIndex) co
     plot(2,4,shadow);
     QFont f; f.setFamily("Monospace"); f.setBold(true); f.setPointSize(12);
     p.setFont(f);
-    p.setPen(Constants::TEXT_COLOR[levelIndex]);
+
+    // UPDATED: Access textColor via LEVELS
+    p.setPen(Constants::LEVELS[levelIndex].textColor);
+
     double tleft = 0.0;
     if (active) tleft = std::max(0.0, endTime - elapsedSeconds);
     else if (elapsedSeconds < cooldownUntil) tleft = std::max(0.0, cooldownUntil - elapsedSeconds);
@@ -168,6 +171,3 @@ void NitroSystem::drawFlame(QPainter& p, const QList<Wheel*>& wheels, int camera
         }
     }
 }
-
-
-

@@ -55,7 +55,7 @@ void FlipTracker::drawHUD(QPainter& p, int levelIndex) const
     const int textGY = nitroBaselineGY + 7 + extraGapCells;
     QFont f; f.setFamily("Monospace"); f.setBold(true); f.setPointSize(12);
     p.setFont(f);
-    p.setPen(Constants::TEXT_COLOR[levelIndex]);
+    p.setPen(Constants::LEVELS[levelIndex].textColor);
     p.drawText(textGX * Constants::PIXEL_SIZE,
                textGY  * Constants::PIXEL_SIZE,
                QString("Flips: %1").arg(total()));
@@ -96,6 +96,6 @@ void FlipTracker::drawWorldPopups(QPainter& p, int cameraX, int cameraY, int lev
     for (const auto& pop : m_popups) {
         const int gx = gx_from_px(pop.wx - cameraX) + screenPadCells;
         const int gy = gy_from_px(pop.wy + cameraY);
-        drawPixelWordFlip(p, gx, gy, cell, Constants::FLIP_COLOR[level_index]);
+        drawPixelWordFlip(p, gx, gy, cell, Constants::LEVELS[level_index].flipPopupColor);
     }
 }
